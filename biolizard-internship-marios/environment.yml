@@ -1,0 +1,10 @@
+name: biolizard-internship-marios
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.7.1
+  - coverage
+  - black
+  - python-dotenv>=0.5.1
+  - pre_commit

@@ -1,0 +1,16 @@
+{
+  "template": "https://github.com/MariosEft97/cookiecutter-analytical-project.git",
+  "commit": "ac6efe0936c2545675586cdaf415af65421894dd",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "lizard_code": "Liz.3.3",
+      "project_name": "ai-platform",
+      "repo_name": "biolizard-internship-marios",
+      "author_name": "Marios Eftychiou",
+      "short_description": "Data analysis pipeline...",
+      "_template": "https://github.com/MariosEft97/cookiecutter-analytical-project.git"
+    }
+  },
+  "directory": null
+}
