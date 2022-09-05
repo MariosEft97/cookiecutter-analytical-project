@@ -35,7 +35,7 @@ def data_load(folder, filename):
 
     return df
     
-def data_info(df, filename, threshold):
+def data_info(df, filename, threshold=20):
     
     """
     The function creates and displays a report containing the following info:
@@ -44,6 +44,7 @@ def data_info(df, filename, threshold):
         3) Categorical features (if present) and their unique values
         4) Continuous features (if present) and their descriptive statistics
         5) Missing data (if present)
+        6) Duplicate values (if present)
     
     Parameters:
         df: Pandas DataFrame
@@ -51,6 +52,7 @@ def data_info(df, filename, threshold):
         threshold (int): a feature having more unique values than the threshold is considered as continuous
     
     Returns:
+        identifier (list): list with identifier columns
         categorical (list): list of categorical features in the DataFrame
         continuous (list): list of continuous features in the DataFrame    
     """
@@ -102,7 +104,7 @@ def data_info(df, filename, threshold):
             categorical.append(column)
     
     for column in categorical:
-        unique_values.append([column, df[column].unique()])
+        unique_values.append([column, df[column].value_counts().sort_index(ascending=True).to_dict()])
     
     for column in continuous:
         continuous_statistics.append(
@@ -123,7 +125,7 @@ def data_info(df, filename, threshold):
     print(100*"-")
     
     if len(categorical)>=1:
-        print(tabulate(unique_values, headers=["Features", "Categories"]))
+        print(tabulate(unique_values, headers=["Features", "Categories & Counts"]))
     else:
         print("There are no categorical features in the dataset.")
     
@@ -169,10 +171,21 @@ def data_info(df, filename, threshold):
         pass
     print(100*"-")
 
-    return categorical, continuous
+    print("DUPLICATE VALUES:")
+    print(100*"-")
+
+    if df.duplicated().sum() == 0:
+        print("There are now duplicate entries in the dataset.")
+    elif df.duplicated().sum() > 0:
+        print("There following entries are duplicated.")
+        print(print(df[df.duplicated()==True]))
+    
+    print(100*"-")
+    
+    return identifier, categorical, continuous
 
 
-def correlations(df, type, printout):
+def correlations(df, type="matrix", printout="pearson"):
     
     """
     The function creates a correlation matrix/heatmap of the continuous features in the dataset.
@@ -206,7 +219,125 @@ def correlations(df, type, printout):
         fig.show()
 
 
-# def data_processing(df):
+def treat_na(df, identifier, categorical, continuous, drop_na_rows=False, impute_value=0.5, categorical_imputer="mode", continuous_imputer="mean"):
+
+    """
+    The function treats missing values.
+
+    Parameters:
+        df: Pandas DataFrame
+        identifier (list): identifier features of the dataset
+        categorical (list): categorical features of the dataset
+        continuous (list): continuous features of the dataset
+        drop_na (bool): drop rows containing missing values (True or False, default=False)
+        impute_value (float): if NA fraction is less or equal to the specified value, missing values are imputed otherwise they are removed (defaul=0.5)
+        categorical_imputer (str): how categorcial missing values are imputed (mode, default=mode)
+        continuous_imputer (str): how missing values are imputed (mean, median, default=mean)
+    
+    Returns:
+        df_treat_na: Pandas DataFrame with no missing values
+    """
+   
+    df_treat_na = df.copy(deep=True)
+
+    for column in df_treat_na.columns:
+        
+        missing_fraction = df_treat_na[column].isnull().sum()/df_treat_na.shape[0]
+        
+        if column in identifier:
+            # df_treat_na.drop(df_treat_na.loc[df_treat_na[column].isnull()].index, inplace=True)
+            pass
+        
+        if column in continuous:
+            if drop_na_rows == False:
+                if missing_fraction < impute_value:
+                    if continuous_imputer == "mean":
+                        df_treat_na[column] = df_treat_na[column].fillna(df_treat_na[column].mean())
+                    elif continuous_imputer == "median":
+                        df_treat_na[column] = df_treat_na[column].fillna(df_treat_na[column].median())
+                elif missing_fraction >= impute_value:
+                    df_treat_na.dropna(axis=1, subset=[column], inplace=True)
+            elif drop_na_rows == True:
+                if missing_fraction < impute_value:
+                    df_treat_na.dropna(axis=0, subset=[column], inplace=True)
+                elif missing_fraction >= impute_value:
+                    df_treat_na.dropna(axis=1, subset=[column], inplace=True)
+        
+        if column in categorical:
+            if drop_na_rows == False:
+                if missing_fraction < impute_value:
+                    if categorical_imputer == "mode":
+                        df_treat_na[column] = df_treat_na[column].fillna(df_treat_na[column].mode()[0])
+                elif missing_fraction >= impute_value:
+                    df_treat_na.dropna(axis=1, subset=[column], inplace=True)
+            elif drop_na_rows == True:
+                if missing_fraction < impute_value:
+                    df_treat_na.dropna(axis=0, subset=[column], inplace=True)
+                elif missing_fraction >= impute_value:
+                    df_treat_na.dropna(axis=1, subset=[column], inplace=True)
+    
+    return df_treat_na
+
+
+
+
+    # for column in identifier:
+    #      df_treat_na[column].dropna(axis=0, inplace=True)
+
+    
+    # for column in continuous:
+        
+    #     missing_fraction = df_treat_na[column].isnull().sum()/df_treat_na.shape[0]
+
+    #     if drop_na_rows == False:
+    #         if missing_fraction < impute_value:
+    #             if continuous_imputer == "mean":
+    #                 df_treat_na[column].fillna((df_treat_na[column].mean()), inplace=True)
+    #             elif continuous_imputer == "median":
+    #                 df_treat_na[column].fillna((df_treat_na[column].median()), inplace=True)
+    #         elif missing_fraction >= impute_value:
+    #             df_treat_na[column].dropna(axis=1, inplace=True)
+    #     elif drop_na_rows == True:
+    #         if missing_fraction < impute_value:
+    #             df_treat_na[column].dropna(axis=0, inplace=True)
+    #         elif missing_fraction >= impute_value:
+    #             df_treat_na[column].dropna(axis=1, inplace=True)
+
+    # for column in categorical:
+        
+    #     missing_fraction = df_treat_na[column].isnull().sum()/df_treat_na.shape[0]
+
+    #     if drop_na_rows == False:
+    #         if missing_fraction < impute_value:
+    #             if categorical_imputer == "mean":
+    #                 df_treat_na[column].fillna((df_treat_na[column].mode()), inplace=True)
+    #         elif missing_fraction >= impute_value:
+    #             df_treat_na[column].dropna(axis=1, inplace=True)
+    #     elif drop_na_rows == True:
+    #         if missing_fraction < impute_value:
+    #             df_treat_na[column].dropna(axis=0, inplace=True)
+    #         elif missing_fraction >= impute_value:
+    #             df_treat_na[column].dropna(axis=1, inplace=True)
+    
+    # return df_treat_na
+
+
+# def data_processing(df, missing=True, impute=0.5, imputer, outliers=True, normalize=False, standardize=True, encoding=False):
+    
+#     """
+#     The function performs the preprocessing of the data:
+#     1) Identifies and removes/imputes missing values.
+#     2) Identifies and removes outlying values.
+#     3) Normalizes/standardizes data if needed.
+#     4) Changes the format/encoding of values if needed.
+
+#     Parameters:
+#         df: Pandas DataFrame
+#         missing (bool): treat missing values (True or False) (default=True)
+#         impute (float): if NA fraction is less or equal to the specified value missing values are imputed otherwise they are removed (defaul=0.5)
+#         imputer (str): how missing values are imputed (mean, median, mode)
+#         outliers (bool): treat outliers
+#     """
 
 
 
