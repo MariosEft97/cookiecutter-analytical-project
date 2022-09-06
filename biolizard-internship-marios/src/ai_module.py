@@ -218,63 +218,63 @@ def correlations(df, type="matrix", printout="pearson"):
         fig = px.imshow(round(matrix, 3), text_auto=True, color_continuous_scale="Viridis")
         fig.show()
 
-def data_split(df, target, type, train_proportion=0.8, test_proportion=0.2, validation_proportion=0.2, stratify=True, shuffle=False):
+# def data_split(df, target, type, train_proportion=0.8, test_proportion=0.2, validation_proportion=0.2, stratify=True, shuffle=False):
     
-    """
-    The function splits the data into train-test sets or train-validation-test sets.
+#     """
+#     The function splits the data into train-test sets or train-validation-test sets.
 
-    Parameters:
-        df (Pandas DataFrame): data structure with loaded data
-        target (str): target variable
-        type (str): split type (tt, tvt)
-            tt: train-test
-            tvt: train-validation-test
-        train_proportion (float): fraction of data to be used for training (0-1, default=0.8)
-        test_proportion (float): fraction of data to be used for testing (0-1, default=0.2)
-        validation_proportion (float): fraction of data to be used for validation (0-1, default=0.2)
-        stratify (bool): stratified split (True or False, default=True)
-        shuffle (bool): shuffle data (True or False, default=False)
+#     Parameters:
+#         df (Pandas DataFrame): data structure with loaded data
+#         target (str): target variable
+#         type (str): split type (tt, tvt)
+#             tt: train-test
+#             tvt: train-validation-test
+#         train_proportion (float): fraction of data to be used for training (0-1, default=0.8)
+#         test_proportion (float): fraction of data to be used for testing (0-1, default=0.2)
+#         validation_proportion (float): fraction of data to be used for validation (0-1, default=0.2)
+#         stratify (bool): stratified split (True or False, default=True)
+#         shuffle (bool): shuffle data (True or False, default=False)
 
-    Returns:
-        train_df (Pandas DataFrame): data structure with training data
-        test_df (Pandas DataFrame): data structure with testing data
-        validation_df (Pandas DataFrame): data structure with validation data
-    """
+#     Returns:
+#         train_df (Pandas DataFrame): data structure with training data
+#         test_df (Pandas DataFrame): data structure with testing data
+#         validation_df (Pandas DataFrame): data structure with validation data
+#     """
 
-    import numpy as np
-    from sklearn.model_selection import train_test_split
+#     import numpy as np
+#     from sklearn.model_selection import train_test_split
 
-    X = df.drop(columns=[target])
-    y = df[[target]]
+#     X = df.drop(columns=[target])
+#     y = df[[target]]
 
-    if shuffle == False:
-        if stratify == False:
-            if type == "tt":
-                X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, random_state=0)
-            elif type == "tvt":
-                X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, random_state=0)
-                X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, train_size=train_proportion, test_size=validation_proportion, random_state=0)
-        elif stratify == True:
-            if type == "tt":
-                X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=target, random_state=0)
-            elif type == "tvt":
-                X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=target, random_state=0)
-                X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, train_size=train_proportion, test_size=validation_proportion, stratify=y_train, random_state=0)
-    elif shuffle == True:
-        if stratify == False:
-            if type == "tt":
-                X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, shuffle=True)
-            elif type == "tvt":
-                X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, shuffle=True)
-                X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, train_size=train_proportion, test_size=validation_proportion, shuffle=True)
-        elif stratify == True:
-            if type == "tt":
-                X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=target, shuffle=True)
-            elif type == "tvt":
-                X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=target, shuffle=True)
-                X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, train_size=train_proportion, test_size=validation_proportion, stratify=y_train, shuffle=True)
+#     if shuffle == False:
+#         if stratify == False:
+#             if type == "tt":
+#                 X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, random_state=0)
+#             elif type == "tvt":
+#                 X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, random_state=0)
+#                 X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, train_size=train_proportion, test_size=validation_proportion, random_state=0)
+#         elif stratify == True:
+#             if type == "tt":
+#                 X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=target, random_state=0)
+#             elif type == "tvt":
+#                 X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=target, random_state=0)
+#                 X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, train_size=train_proportion, test_size=validation_proportion, stratify=y_train, random_state=0)
+#     elif shuffle == True:
+#         if stratify == False:
+#             if type == "tt":
+#                 X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, shuffle=True)
+#             elif type == "tvt":
+#                 X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, shuffle=True)
+#                 X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, train_size=train_proportion, test_size=validation_proportion, shuffle=True)
+#         elif stratify == True:
+#             if type == "tt":
+#                 X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=target, shuffle=True)
+#             elif type == "tvt":
+#                 X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=target, shuffle=True)
+#                 X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, train_size=train_proportion, test_size=validation_proportion, stratify=y_train, shuffle=True)
 
-    return X, y, X_train, y_train, X_val, y_val, X_test, y_test
+#     return X, y, X_train, y_train, X_val, y_val, X_test, y_test
 
 
 def treat_na(df, identifier, categorical, continuous, drop_na_rows=False, impute_value=0.5, categorical_imputer="mode", continuous_imputer="mean"):
@@ -356,26 +356,26 @@ def treat_duplicate(df_treat_na, subset=None, keep="first"):
 
     return df_treat_duplicate
 
-def treat_outliers(df_treat_duplicate, method):
+# def treat_outliers(df_treat_duplicate, method):
     
-    """
-    The function identifies and removes outlying observations from the dataset (if present).
+#     """
+#     The function identifies and removes outlying observations from the dataset (if present).
 
-    Parameters:
-        df_treat_duplicate (Pandas DataFrame): data structure with no missing values or duplicated entries
-        method (str): automatic outlier detection method (if, mcd, lof, svm)
-            if: isolation forest
-            mcd: minimum covariance distance
-            lof: local outlier factor
-            svm: one-class support vector machine
+#     Parameters:
+#         df_treat_duplicate (Pandas DataFrame): data structure with no missing values or duplicated entries
+#         method (str): automatic outlier detection method (if, mcd, lof, svm)
+#             if: isolation forest
+#             mcd: minimum covariance distance
+#             lof: local outlier factor
+#             svm: one-class support vector machine
     
-    Returns:
-        df_treat_outlier (Pandas DataFrame): data structure with no missing values, duplicated entries or outlying obrervations
-    """
+#     Returns:
+#         df_treat_outlier (Pandas DataFrame): data structure with no missing values, duplicated entries or outlying obrervations
+#     """
 
-    from sklearn.ensemble import IsolationForest
+#     from sklearn.ensemble import IsolationForest
 
-    return None
+#     return None
 
 
 
