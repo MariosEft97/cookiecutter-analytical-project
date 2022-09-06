@@ -4,11 +4,11 @@ def data_load(folder, filename):
     The function loads the data and returns an appropriate data structure (Pandas DataFrame).
 
     Parameters:
-        folder: path of the folder where the data are found
-        filename: name of the data file 
+        folder (str): path of the folder where the data are found
+        filename (str): name of the data file 
     
     Returns:
-        Pandas DataFrame with loaded data
+        df (Pandas DataFrame): data structure with loaded data
     '''
     
     import os
@@ -47,8 +47,8 @@ def data_info(df, filename, threshold=20):
         6) Duplicate values (if present)
     
     Parameters:
-        df: Pandas DataFrame
-        filename: name of the data file
+        df (Pandas DataFrame): data structure with loaded data
+        filename (str): name of the data file
         threshold (int): a feature having more unique values than the threshold is considered as continuous
     
     Returns:
@@ -191,7 +191,7 @@ def correlations(df, type="matrix", printout="pearson"):
     The function creates a correlation matrix/heatmap of the continuous features in the dataset.
     
     Parameters:
-        df: Pandas DataFrame
+        df (Pandas DataFrame): data structure with loaded data
         type (str): type of correlations (pearson or spearman)
         printout (str): how correlations are displayed (matrix or heatmap)
     
@@ -218,6 +218,64 @@ def correlations(df, type="matrix", printout="pearson"):
         fig = px.imshow(round(matrix, 3), text_auto=True, color_continuous_scale="Viridis")
         fig.show()
 
+def data_split(df, target, type, train_proportion=0.8, test_proportion=0.2, validation_proportion=0.2, stratify=True, shuffle=False):
+    
+    """
+    The function splits the data into train-test sets or train-validation-test sets.
+
+    Parameters:
+        df (Pandas DataFrame): data structure with loaded data
+        target (str): target variable
+        type (str): split type (tt, tvt)
+            tt: train-test
+            tvt: train-validation-test
+        train_proportion (float): fraction of data to be used for training (0-1, default=0.8)
+        test_proportion (float): fraction of data to be used for testing (0-1, default=0.2)
+        validation_proportion (float): fraction of data to be used for validation (0-1, default=0.2)
+        stratify (bool): stratified split (True or False, default=True)
+        shuffle (bool): shuffle data (True or False, default=False)
+
+    Returns:
+        train_df (Pandas DataFrame): data structure with training data
+        test_df (Pandas DataFrame): data structure with testing data
+        validation_df (Pandas DataFrame): data structure with validation data
+    """
+
+    import numpy as np
+    from sklearn.model_selection import train_test_split
+
+    X = df.drop(columns=[target])
+    y = df[[target]]
+
+    if shuffle == False:
+        if stratify == False:
+            if type == "tt":
+                X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, random_state=0)
+            elif type == "tvt":
+                X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, random_state=0)
+                X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, train_size=train_proportion, test_size=validation_proportion, random_state=0)
+        elif stratify == True:
+            if type == "tt":
+                X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=target, random_state=0)
+            elif type == "tvt":
+                X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=target, random_state=0)
+                X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, train_size=train_proportion, test_size=validation_proportion, stratify=y_train, random_state=0)
+    elif shuffle == True:
+        if stratify == False:
+            if type == "tt":
+                X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, shuffle=True)
+            elif type == "tvt":
+                X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, shuffle=True)
+                X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, train_size=train_proportion, test_size=validation_proportion, shuffle=True)
+        elif stratify == True:
+            if type == "tt":
+                X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=target, shuffle=True)
+            elif type == "tvt":
+                X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=target, shuffle=True)
+                X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, train_size=train_proportion, test_size=validation_proportion, stratify=y_train, shuffle=True)
+
+    return X, y, X_train, y_train, X_val, y_val, X_test, y_test
+
 
 def treat_na(df, identifier, categorical, continuous, drop_na_rows=False, impute_value=0.5, categorical_imputer="mode", continuous_imputer="mean"):
 
@@ -225,17 +283,17 @@ def treat_na(df, identifier, categorical, continuous, drop_na_rows=False, impute
     The function treats missing values.
 
     Parameters:
-        df: Pandas DataFrame
+        df (Pandas DataFrame): data structure with loaded data
         identifier (list): identifier features of the dataset
         categorical (list): categorical features of the dataset
         continuous (list): continuous features of the dataset
         drop_na (bool): drop rows containing missing values (True or False, default=False)
-        impute_value (float): if NA fraction is less or equal to the specified value, missing values are imputed otherwise they are removed (defaul=0.5)
+        impute_value (float): if NA fraction is less or equal to the specified value, missing values are imputed otherwise the feature is removed (defaul=0.5)
         categorical_imputer (str): how categorcial missing values are imputed (mode, default=mode)
         continuous_imputer (str): how missing values are imputed (mean, median, default=mean)
     
     Returns:
-        df_treat_na: Pandas DataFrame with no missing values
+        df_treat_na (Pandas DataFrame): data structure with no missing values
     """
    
     df_treat_na = df.copy(deep=True)
@@ -245,8 +303,10 @@ def treat_na(df, identifier, categorical, continuous, drop_na_rows=False, impute
         missing_fraction = df_treat_na[column].isnull().sum()/df_treat_na.shape[0]
         
         if column in identifier:
-            # df_treat_na.drop(df_treat_na.loc[df_treat_na[column].isnull()].index, inplace=True)
-            pass
+            if drop_na_rows == False:
+                pass
+            elif drop_na_rows == True:
+                df_treat_na.drop(df_treat_na.loc[df_treat_na[column].isnull()].index, inplace=True)
         
         if column in continuous:
             if drop_na_rows == False:
@@ -278,48 +338,46 @@ def treat_na(df, identifier, categorical, continuous, drop_na_rows=False, impute
     
     return df_treat_na
 
-
-
-
-    # for column in identifier:
-    #      df_treat_na[column].dropna(axis=0, inplace=True)
-
+def treat_duplicate(df_treat_na, subset=None, keep="first"):
     
-    # for column in continuous:
-        
-    #     missing_fraction = df_treat_na[column].isnull().sum()/df_treat_na.shape[0]
+    '''
+    The function identifies and removes duplicate entries from the dataset (if present).
 
-    #     if drop_na_rows == False:
-    #         if missing_fraction < impute_value:
-    #             if continuous_imputer == "mean":
-    #                 df_treat_na[column].fillna((df_treat_na[column].mean()), inplace=True)
-    #             elif continuous_imputer == "median":
-    #                 df_treat_na[column].fillna((df_treat_na[column].median()), inplace=True)
-    #         elif missing_fraction >= impute_value:
-    #             df_treat_na[column].dropna(axis=1, inplace=True)
-    #     elif drop_na_rows == True:
-    #         if missing_fraction < impute_value:
-    #             df_treat_na[column].dropna(axis=0, inplace=True)
-    #         elif missing_fraction >= impute_value:
-    #             df_treat_na[column].dropna(axis=1, inplace=True)
-
-    # for column in categorical:
-        
-    #     missing_fraction = df_treat_na[column].isnull().sum()/df_treat_na.shape[0]
-
-    #     if drop_na_rows == False:
-    #         if missing_fraction < impute_value:
-    #             if categorical_imputer == "mean":
-    #                 df_treat_na[column].fillna((df_treat_na[column].mode()), inplace=True)
-    #         elif missing_fraction >= impute_value:
-    #             df_treat_na[column].dropna(axis=1, inplace=True)
-    #     elif drop_na_rows == True:
-    #         if missing_fraction < impute_value:
-    #             df_treat_na[column].dropna(axis=0, inplace=True)
-    #         elif missing_fraction >= impute_value:
-    #             df_treat_na[column].dropna(axis=1, inplace=True)
+    Parameters:
+        df_treat_na (Pandas DataFrame): data structure with no missing values
+        subset (list): subset of features to be considered, by deault all features are considered (default=None)
+        keep (str): which occurance of duplicate value to keep (first, last, False)
     
-    # return df_treat_na
+    Returns:
+        df_treat_duplicate (Pandas DataFrame): data structure with no missing values or duplicated entries
+    '''
+
+    df_treat_duplicate = df_treat_na.drop_duplicates(keep=keep, subset=subset)
+
+    return df_treat_duplicate
+
+def treat_outliers(df_treat_duplicate, method):
+    
+    """
+    The function identifies and removes outlying observations from the dataset (if present).
+
+    Parameters:
+        df_treat_duplicate (Pandas DataFrame): data structure with no missing values or duplicated entries
+        method (str): automatic outlier detection method (if, mcd, lof, svm)
+            if: isolation forest
+            mcd: minimum covariance distance
+            lof: local outlier factor
+            svm: one-class support vector machine
+    
+    Returns:
+        df_treat_outlier (Pandas DataFrame): data structure with no missing values, duplicated entries or outlying obrervations
+    """
+
+    from sklearn.ensemble import IsolationForest
+
+    return None
+
+
 
 
 # def data_processing(df, missing=True, impute=0.5, imputer, outliers=True, normalize=False, standardize=True, encoding=False):
