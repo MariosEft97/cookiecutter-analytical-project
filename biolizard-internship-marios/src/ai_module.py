@@ -1,4 +1,17 @@
-def data_load(folder, filename):
+# LOAD PACKAGES
+import os
+import pandas as pd
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
+import numpy as np
+from tabulate import tabulate
+import plotly.express as px
+import plotly.io as pio
+pio.renderers.default = "vscode"
+from IPython.display import display
+
+### DATA LOAD FUNCTION ###
+def data_load(folder: str, filename: str) -> pd.DataFrame:
     
     '''
     The function loads the data and returns an appropriate data structure (Pandas DataFrame).
@@ -11,9 +24,9 @@ def data_load(folder, filename):
         df (Pandas DataFrame): data structure with loaded data
     '''
     
-    import os
-    import pandas as pd
-  
+    if not isinstance(folder, str) or not isinstance(filename, str):
+        raise TypeError
+            
     filepath = os.path.join(folder, filename)
     
     df = ""
@@ -28,14 +41,15 @@ def data_load(folder, filename):
         df = pd.read_json(filepath)
     else:
         print(f"Error in {filename}")
-        print("File extension is not correct.")
-        print("Please specify a correct one (xlsx, csv, txt, json).")
+        print("File extension is not correct or not supported.")
+        print("Please specify a one of the following: xlsx, csv, txt, json.")
     
     df.drop(df.filter(regex="Unnamed"), axis=1, inplace=True)
 
     return df
-    
-def data_info(df, filename, threshold=20):
+
+### DATA INFO FUNCTION ###
+def data_info(df: pd.DataFrame, filename: str, threshold: int=20) -> list:
     
     """
     The function creates and displays a report containing the following info:
@@ -57,15 +71,15 @@ def data_info(df, filename, threshold=20):
         continuous (list): list of continuous features in the DataFrame    
     """
 
-    import numpy as np
-    from tabulate import tabulate
-
+    if not isinstance(df, pd.DataFrame) or not isinstance(filename, str) or not isinstance(threshold, int):
+        raise TypeError
+    
+    
     # Number of entries and features
     
     entry_num = len(df)
     feature_num = len(df.columns)
     
-    print("\n")
     print(f"DATA FILE:")
     print(100*"-")
     print(f"{filename}")
@@ -78,12 +92,12 @@ def data_info(df, filename, threshold=20):
     print(100*"-")
     print("\n")
     
-    # print("FEATURES:")
     # print(100*"-")
-    # print(df.columns)
+    # print(f"DATA FILE: {filename}")
     # print(100*"-")
-    # print("\n")
-    
+    # print(f"DIMENSIONS: {entry_num} entries \t {feature_num} features")
+    # print(100*"-")
+        
     # Categorical and Continuous features
     
     categorical = []
@@ -104,12 +118,13 @@ def data_info(df, filename, threshold=20):
             categorical.append(column)
     
     for column in categorical:
-        unique_values.append([column, df[column].value_counts().sort_index(ascending=True).to_dict()])
+        unique_values.append([column, df.dtypes[column], df[column].value_counts().sort_index(ascending=True).to_dict()])
     
     for column in continuous:
         continuous_statistics.append(
             [
                 column,
+                df.dtypes[column],
                 round(len(df[column]), 3),
                 round(np.mean(df[column]), 3),
                 round(np.std(df[column]), 3),
@@ -125,7 +140,7 @@ def data_info(df, filename, threshold=20):
     print(100*"-")
     
     if len(categorical)>=1:
-        print(tabulate(unique_values, headers=["Features", "Categories & Counts"]))
+        print(tabulate(unique_values, headers=["Features", "Data Type", "Categories & Counts"]))
     else:
         print("There are no categorical features in the dataset.")
     
@@ -135,7 +150,7 @@ def data_info(df, filename, threshold=20):
     print(f"CONTINUOUS FEATURES:")
     print(100*"-")
 
-    print(tabulate(continuous_statistics, headers=["Features", "Count", "Mean", "Std", "Min", "25th", "Median", "75th", "Max"]))
+    print(tabulate(continuous_statistics, headers=["Features", "Data Type", "Count", "Mean", "Std", "Min", "25th", "Median", "75th", "Max"]))
     print(100*"-")
     print("\n")
 
@@ -185,7 +200,7 @@ def data_info(df, filename, threshold=20):
     return identifier, categorical, continuous
 
 
-def correlations(df, type="matrix", printout="pearson"):
+def correlations(df: pd.DataFrame, type: str="matrix", printout: str="pearson") -> pd.DataFrame:
     
     """
     The function creates a correlation matrix/heatmap of the continuous features in the dataset.
@@ -199,15 +214,9 @@ def correlations(df, type="matrix", printout="pearson"):
         None
 
     """
-
-    import pandas as pd
-    pd.set_option('display.max_rows', None)
-    pd.set_option('display.max_columns', None)
-    import plotly.express as px
-    import plotly.io as pio
-    pio.renderers.default = "vscode"
-    from IPython.display import display
-
+    if not isinstance(df, pd.DataFrame) or not isinstance(type, str) or not isinstance(printout, str):
+        raise TypeError
+    
     matrix = df.corr(method=type)
 
     if printout == "matrix":
@@ -215,8 +224,10 @@ def correlations(df, type="matrix", printout="pearson"):
         display(round(matrix, 3))
     elif printout == "heatmap":
         print("Heatmap:")
-        fig = px.imshow(round(matrix, 3), text_auto=True, color_continuous_scale="Viridis")
+        fig = px.imshow(round(matrix, 3), text_auto=True, color_continuous_scale="Viridis", title="Correlation Heatmap of Continuous Features.")
         fig.show()
+    
+    return matrix
 
 def data_split(df, target, type, random_state, train_proportion=0.8, test_proportion=0.2, validation_proportion=0.25, stratify="Yes"):
     
