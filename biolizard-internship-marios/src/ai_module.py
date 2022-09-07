@@ -9,6 +9,8 @@ import plotly.express as px
 import plotly.io as pio
 pio.renderers.default = "vscode"
 from IPython.display import display
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import IsolationForest
 
 ### DATA LOAD FUNCTION ###
 def data_load(folder: str, filename: str) -> pd.DataFrame:
@@ -199,7 +201,7 @@ def data_info(df: pd.DataFrame, filename: str, threshold: int=20) -> list:
     
     return identifier, categorical, continuous
 
-
+### CORRELATIONS FUNCTION ###
 def correlations(df: pd.DataFrame, type: str="matrix", printout: str="pearson") -> pd.DataFrame:
     
     """
@@ -224,12 +226,13 @@ def correlations(df: pd.DataFrame, type: str="matrix", printout: str="pearson") 
         display(round(matrix, 3))
     elif printout == "heatmap":
         print("Heatmap:")
-        fig = px.imshow(round(matrix, 3), text_auto=True, color_continuous_scale="Viridis", title="Correlation Heatmap of Continuous Features.")
+        fig = px.imshow(round(matrix, 3), text_auto=True, color_continuous_scale="Viridis", title="Correlation Heatmap of Continuous Features")
         fig.show()
     
     return matrix
 
-def data_split(df, target, type, random_state, train_proportion=0.8, test_proportion=0.2, validation_proportion=0.25, stratify="Yes"):
+### DATA SPLIT FUNCTION ###
+def data_split(df: pd.DataFrame, target: str, method: str="tt", random_state: int=None, train_proportion: float=0.8, test_proportion: float=0.2, validation_proportion:float=0.25, stratify: str="Yes") -> pd.DataFrame:
     
     """
     The function splits the data into train-test sets or train-validation-test sets.
@@ -237,63 +240,76 @@ def data_split(df, target, type, random_state, train_proportion=0.8, test_propor
     Parameters:
         df (Pandas DataFrame): data structure with loaded data
         target (str): target variable
-        type (str): split type (tt, tvt)
-            tt: train-test
-            tvt: train-validation-test
+        method (str): split method (tt: train-test, tvt: train-validation-test, default=tt)
+        random_state (int): random state value (default=None)
         train_proportion (float): fraction of data to be used for training (0-1, default=0.8)
         test_proportion (float): fraction of data to be used for testing (0-1, default=0.2)
-        validation_proportion (float): fraction of data to be used for validation (0-1, default=0.2)
+        validation_proportion (float): fraction of data to be used for validation (0-1, default=0.25)
         stratify (str): stratified split (Yes or No, default=Yes)
 
     Returns:
-        train_df (Pandas DataFrame): data structure with training data
-        test_df (Pandas DataFrame): data structure with testing data
-        validation_df (Pandas DataFrame): data structure with validation data
+        X (Pandas DataFrame): data structure with predictor features
+        y (Pandas DataFrame): data structure with target feature
+        X_train (Pandas DataFrame): data structure with training predictor features
+        y_train (Pandas DataFrame): data structure with training target feature
+        X_test (Pandas DataFrame): data structure with testing predictor features
+        y_test (Pandas DataFrame): data structure with testing target feature
+        X_val (Pandas DataFrame): data structure with validation predictor features
+        y_val (Pandas DataFrame): data structure with validation target feature
     """
-    from sklearn.model_selection import train_test_split
+    
+
+    if not isinstance(df, pd.DataFrame) or not isinstance(target, str) or not isinstance(method, str) or not isinstance(random_state, int) or not isinstance(train_proportion, float) or not isinstance(test_proportion, float) or not isinstance(validation_proportion, float) or not isinstance(stratify, str):
+        raise TypeError
 
     X = df.drop(columns=[target])
     y = df[[target]]
 
     if stratify == "No":
-        if type == "tt":
-            X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, random_state=0)
+        if method == "tt":
+            X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, random_state=random_state)
             X_val = None
             y_val = None
-        elif type == "tvt":
-            X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, random_state=0)
-            X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=validation_proportion, random_state=0)
+        elif method == "tvt":
+            X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, random_state=random_state)
+            X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=validation_proportion, random_state=random_state)
     elif stratify == "Yes":
-        if type == "tt":
-            X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=y, random_state=0)
+        if method == "tt":
+            X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=y, random_state=random_state)
             X_val = None
             y_val = None
-        elif type == "tvt":
-            X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=y, random_state=0)
-            X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=validation_proportion, stratify=y_train, random_state=0)
+        elif method == "tvt":
+            X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=y, random_state=random_state)
+            X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=validation_proportion, stratify=y_train, random_state=random_state)
     
     return X, y, X_train, y_train, X_test, y_test, X_val, y_val
 
-
-def treat_na(df, identifier, categorical, continuous, drop_na_rows=False, impute_value=0.5, categorical_imputer="mode", continuous_imputer="mean"):
+### TREAT NA FUNCTION ###
+def treat_na(df: pd.DataFrame, data_type: str, identifier: list, categorical: list, continuous:list, drop_na_rows: bool=False, impute_cutoff: float=0.5, categorical_imputer: str="mode", continuous_imputer: str="mean") -> pd.DataFrame:
 
     """
     The function treats missing values.
 
     Parameters:
         df (Pandas DataFrame): data structure with loaded data
+        data_type (str): training or validation or testing data (train, validation or test)
         identifier (list): identifier features of the dataset
         categorical (list): categorical features of the dataset
         continuous (list): continuous features of the dataset
         drop_na (bool): drop rows containing missing values (True or False, default=False)
-        impute_value (float): if NA fraction is less or equal to the specified value, missing values are imputed otherwise the feature is removed (defaul=0.5)
+        impute_cutoff (float): if NA fraction is less or equal to the specified value, missing values are imputed otherwise the feature is removed (defaul=0.5)
         categorical_imputer (str): how categorcial missing values are imputed (mode, default=mode)
         continuous_imputer (str): how missing values are imputed (mean, median, default=mean)
     
     Returns:
         df_treat_na (Pandas DataFrame): data structure with no missing values
     """
+
+    if not isinstance(df, pd.DataFrame) or not isinstance(data_type, str) or not isinstance(identifier, list) or not isinstance(categorical, list) or not isinstance(continuous, list) or not isinstance(drop_na_rows, bool) or not isinstance(impute_cutoff, float) or not isinstance(categorical_imputer, str) or not isinstance(continuous_imputer, str):
+        raise TypeError
    
+    
+
     df_treat_na = df.copy(deep=True)
 
     for column in df_treat_na.columns:
@@ -306,72 +322,71 @@ def treat_na(df, identifier, categorical, continuous, drop_na_rows=False, impute
         
         if column in continuous:
             if drop_na_rows == False:
-                if missing_fraction < impute_value:
+                if missing_fraction < impute_cutoff:
                     if continuous_imputer == "mean":
                         df_treat_na[column] = df_treat_na[column].fillna(df_treat_na[column].mean())
                     elif continuous_imputer == "median":
                         df_treat_na[column] = df_treat_na[column].fillna(df_treat_na[column].median())
-                elif missing_fraction >= impute_value:
+                elif missing_fraction >= impute_cutoff:
                     df_treat_na.dropna(axis=1, subset=[column], inplace=True)
             elif drop_na_rows == True:
-                if missing_fraction < impute_value:
+                if missing_fraction < impute_cutoff:
                     df_treat_na.dropna(axis=0, subset=[column], inplace=True)
-                elif missing_fraction >= impute_value:
+                elif missing_fraction >= impute_cutoff:
                     df_treat_na.dropna(axis=1, subset=[column], inplace=True)
         
         if column in categorical:
             if drop_na_rows == False:
-                if missing_fraction < impute_value:
+                if missing_fraction < impute_cutoff:
                     if categorical_imputer == "mode":
                         df_treat_na[column] = df_treat_na[column].fillna(df_treat_na[column].mode()[0])
-                elif missing_fraction >= impute_value:
+                elif missing_fraction >= impute_cutoff:
                     df_treat_na.dropna(axis=1, subset=[column], inplace=True)
             elif drop_na_rows == True:
-                if missing_fraction < impute_value:
+                if missing_fraction < impute_cutoff:
                     df_treat_na.dropna(axis=0, subset=[column], inplace=True)
-                elif missing_fraction >= impute_value:
+                elif missing_fraction >= impute_cutoff:
                     df_treat_na.dropna(axis=1, subset=[column], inplace=True)
     
     return df_treat_na
 
-def treat_duplicate(df_treat_na, subset=None, keep="first"):
+### TREAT DUPLICATE FUNCTION ###
+def treat_duplicate(df: pd.DataFrame, keep_in: str="first") -> pd.DataFrame:
     
     '''
     The function identifies and removes duplicate entries from the dataset (if present).
 
     Parameters:
-        df_treat_na (Pandas DataFrame): data structure with no missing values
-        subset (list): subset of features to be considered, by deault all features are considered (default=None)
+        df (Pandas DataFrame): data structure with no missing values
         keep (str): which occurance of duplicate value to keep (first, last, False)
     
     Returns:
-        df_treat_duplicate (Pandas DataFrame): data structure with no missing values or duplicated entries
+        df_treat_duplicate (Pandas DataFrame): data structure with no duplicated entries
     '''
+    if not isinstance(df, pd.DataFrame) or not isinstance(keep_in, str):
+        raise TypeError
 
-    df_treat_duplicate = df_treat_na.drop_duplicates(keep=keep, subset=subset)
+    df_treat_duplicate = df.drop_duplicates(keep=keep_in)
 
     return df_treat_duplicate
 
-# def treat_outliers(df_treat_duplicate, method):
+### TREAT OUTLIERS FUNCTION ###
+def treat_outliers(df: pd.DataFrame, method: str):
     
-#     """
-#     The function identifies and removes outlying observations from the dataset (if present).
+    """
+    The function identifies and removes outlying observations from the dataset (if present).
 
-#     Parameters:
-#         df_treat_duplicate (Pandas DataFrame): data structure with no missing values or duplicated entries
-#         method (str): automatic outlier detection method (if, mcd, lof, svm)
-#             if: isolation forest
-#             mcd: minimum covariance distance
-#             lof: local outlier factor
-#             svm: one-class support vector machine
+    Parameters:
+        df_treat_duplicate (Pandas DataFrame): data structure with no missing values or duplicated entries
+        method (str): automatic outlier detection method (if: isolation forest, mcd: minimum covariance distance, lof: local outlier factor, svm: one-class support vector machine)
     
-#     Returns:
-#         df_treat_outlier (Pandas DataFrame): data structure with no missing values, duplicated entries or outlying obrervations
-#     """
+    Returns:
+        df_treat_outlier (Pandas DataFrame): data structure with no outlying obrervations
+    """
 
-#     from sklearn.ensemble import IsolationForest
+    
 
-#     return None
+    return None
 
 
 
