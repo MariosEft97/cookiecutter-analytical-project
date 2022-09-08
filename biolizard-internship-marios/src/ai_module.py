@@ -1,4 +1,6 @@
 # LOAD PACKAGES
+import sys
+sys.path.append(r"C:\Users\35799\Desktop\cookiecutter-analytical-project\biolizard-internship-marios\src")
 import os
 import pandas as pd
 pd.set_option('display.max_rows', None)
@@ -8,7 +10,7 @@ from tabulate import tabulate
 import plotly.express as px
 import plotly.io as pio
 pio.renderers.default = "vscode"
-from IPython.display import display
+from IPython.display import display, clear_output
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import IsolationForest
 
@@ -202,7 +204,7 @@ def data_info(df: pd.DataFrame, filename: str, threshold: int=20) -> list:
     return identifier, categorical, continuous
 
 ### CORRELATIONS FUNCTION ###
-def correlations(df: pd.DataFrame, type: str="matrix", printout: str="pearson") -> pd.DataFrame:
+def correlations(df: pd.DataFrame, type: str="pearson", printout: str="matrix") -> pd.DataFrame:
     
     """
     The function creates a correlation matrix/heatmap of the continuous features in the dataset.
@@ -220,13 +222,13 @@ def correlations(df: pd.DataFrame, type: str="matrix", printout: str="pearson") 
         raise TypeError
     
     matrix = df.corr(method=type)
+    type_dict = {"pearson": "Pearson", "spearman": "Spearman"}
 
     if printout == "matrix":
-        print("Correlation Matrix:")
+        print(f"{type_dict[type]} Correlation Matrix:")
         display(round(matrix, 3))
     elif printout == "heatmap":
-        print("Heatmap:")
-        fig = px.imshow(round(matrix, 3), text_auto=True, color_continuous_scale="Viridis", title="Correlation Heatmap of Continuous Features")
+        fig = px.imshow(round(matrix, 3), text_auto=True, color_continuous_scale="Viridis", title=f"{type_dict[type]} Correlation Heatmap of Continuous Features")
         fig.show()
     
     return matrix
@@ -284,15 +286,15 @@ def data_split(df: pd.DataFrame, target: str, method: str="tt", random_state: in
     
     return X, y, X_train, y_train, X_test, y_test, X_val, y_val
 
+
 ### TREAT NA FUNCTION ###
-def treat_na(df: pd.DataFrame, data_type: str, identifier: list, categorical: list, continuous:list, drop_na_rows: bool=False, impute_cutoff: float=0.5, categorical_imputer: str="mode", continuous_imputer: str="mean") -> pd.DataFrame:
+def treat_na(df: pd.DataFrame, identifier: list, categorical: list, continuous:list, drop_na_rows: bool=False, impute_cutoff: float=0.5, categorical_imputer: str="mode", continuous_imputer: str="mean") -> pd.DataFrame:
 
     """
     The function treats missing values.
 
     Parameters:
         df (Pandas DataFrame): data structure with loaded data
-        data_type (str): training or validation or testing data (train, validation or test)
         identifier (list): identifier features of the dataset
         categorical (list): categorical features of the dataset
         continuous (list): continuous features of the dataset
@@ -305,11 +307,9 @@ def treat_na(df: pd.DataFrame, data_type: str, identifier: list, categorical: li
         df_treat_na (Pandas DataFrame): data structure with no missing values
     """
 
-    if not isinstance(df, pd.DataFrame) or not isinstance(data_type, str) or not isinstance(identifier, list) or not isinstance(categorical, list) or not isinstance(continuous, list) or not isinstance(drop_na_rows, bool) or not isinstance(impute_cutoff, float) or not isinstance(categorical_imputer, str) or not isinstance(continuous_imputer, str):
+    if not isinstance(df, pd.DataFrame) or not isinstance(identifier, list) or not isinstance(categorical, list) or not isinstance(continuous, list) or not isinstance(drop_na_rows, bool) or not isinstance(impute_cutoff, float) or not isinstance(categorical_imputer, str) or not isinstance(continuous_imputer, str):
         raise TypeError
    
-    
-
     df_treat_na = df.copy(deep=True)
 
     for column in df_treat_na.columns:
@@ -350,6 +350,92 @@ def treat_na(df: pd.DataFrame, data_type: str, identifier: list, categorical: li
     
     return df_treat_na
 
+### TREAT NA FUNCTION (version 2) ###
+def treat_na2(X_train: pd.DataFrame, y_train: pd.DataFrame, X_test: pd.DataFrame, y_test: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str, drop_na_rows: bool=False, impute_cutoff: float=0.5, categorical_imputer: str="mode", continuous_imputer: str="mean") -> pd.DataFrame:
+
+    """
+    The function treats missing values.
+
+    Parameters:
+        X_train (Pandas DataFrame): data structure with loaded data
+        y_train (Pandas DataFrame): data structure with loaded data
+        X_test (Pandas DataFrame): data structure with loaded data
+        y_test (Pandas DataFrame): data structure with loaded data
+        identifier (list): identifier features of the dataset
+        categorical (list): categorical features of the dataset
+        continuous (list): continuous features of the dataset
+        target (str): target variable
+        drop_na (bool): drop rows containing missing values (True or False, default=False)
+        impute_cutoff (float): if NA fraction is less or equal to the specified value, missing values are imputed otherwise the feature is removed (defaul=0.5)
+        categorical_imputer (str): how categorcial missing values are imputed (mode, default=mode)
+        continuous_imputer (str): how missing values are imputed (mean, median, default=mean)
+    
+    Returns:
+        df_treat_na (Pandas DataFrame): data structure with no missing values
+    """
+
+    if not isinstance(X_train, pd.DataFrame) or not isinstance(y_train, pd.DataFrame) or not isinstance(X_test, pd.DataFrame) or not isinstance(y_test, pd.DataFrame)or not isinstance(identifier, list) or not isinstance(categorical, list) or not isinstance(continuous, list) or not isinstance(target, str) or not isinstance(drop_na_rows, bool) or not isinstance(impute_cutoff, float) or not isinstance(categorical_imputer, str) or not isinstance(continuous_imputer, str):
+        raise TypeError
+   
+    train_df = pd.concat([X_train, y_train], axis=1)
+    test_df = pd.concat([X_test, y_test], axis=1)
+    train_treat_na = train_df.copy(deep=True)
+    test_treat_na = test_df.copy(deep=True)
+ 
+    for column in train_treat_na.columns:
+        
+        missing_fraction_train = train_treat_na[column].isnull().sum()/ train_treat_na.shape[0]
+        missing_fraction_test = test_treat_na[column].isnull().sum()/ test_treat_na.shape[0]
+        
+        if column in identifier:
+            if drop_na_rows == True:
+                train_treat_na.drop( train_treat_na.loc[train_treat_na[column].isnull()].index, inplace=True)
+                test_treat_na.drop( test_treat_na.loc[test_treat_na[column].isnull()].index, inplace=True)
+        
+        if column in continuous:
+            if drop_na_rows == False:
+                if missing_fraction_train < impute_cutoff and missing_fraction_test < impute_cutoff:
+                    if continuous_imputer == "mean":
+                        train_treat_na[column] = train_treat_na[column].fillna(train_treat_na[column].mean())
+                        test_treat_na[column] = test_treat_na[column].fillna(train_treat_na[column].mean())
+                    elif continuous_imputer == "median":
+                        train_treat_na[column] = train_treat_na[column].fillna(train_treat_na[column].median())
+                        test_treat_na[column] = test_treat_na[column].fillna(train_treat_na[column].median())
+                elif missing_fraction_train >= impute_cutoff or missing_fraction_test >= impute_cutoff:
+                    train_treat_na.dropna(axis=1, subset=[column], inplace=True)
+                    test_treat_na.dropna(axis=1, subset=[column], inplace=True)
+            elif drop_na_rows == True:
+                if missing_fraction_train < impute_cutoff and missing_fraction_test < impute_cutoff:
+                    train_treat_na.dropna(axis=0, subset=[column], inplace=True)
+                    test_treat_na.dropna(axis=0, subset=[column], inplace=True)
+                elif missing_fraction_train >= impute_cutoff or missing_fraction_test >= impute_cutoff:
+                    train_treat_na.dropna(axis=1, subset=[column], inplace=True)
+                    test_treat_na.dropna(axis=1, subset=[column], inplace=True)
+        
+        if column in categorical:
+            if drop_na_rows == False:
+                if missing_fraction_train < impute_cutoff and missing_fraction_test < impute_cutoff:
+                    if categorical_imputer == "mode":
+                        train_treat_na[column] = train_treat_na[column].fillna(train_treat_na[column].mode()[0])
+                        test_treat_na[column] = test_treat_na[column].fillna(train_treat_na[column].mode()[0])
+                elif missing_fraction_train >= impute_cutoff or missing_fraction_test >= impute_cutoff:
+                    train_treat_na.dropna(axis=1, subset=[column], inplace=True)
+                    test_treat_na.dropna(axis=1, subset=[column], inplace=True)
+            elif drop_na_rows == True:
+                if missing_fraction_train < impute_cutoff and missing_fraction_test < impute_cutoff:
+                    train_treat_na.dropna(axis=0, subset=[column], inplace=True)
+                    test_treat_na.dropna(axis=0, subset=[column], inplace=True)
+                elif missing_fraction_train >= impute_cutoff or missing_fraction_test >= impute_cutoff:
+                    train_treat_na.dropna(axis=1, subset=[column], inplace=True)
+                    test_treat_na.dropna(axis=0, subset=[column], inplace=True)
+    
+    X_train_treat_na = train_treat_na.drop(columns=[target])
+    y_train_treat_na = train_treat_na[[target]]
+    X_test_treat_na = test_treat_na.drop(columns=[target])
+    y_test_treat_na = test_treat_na[[target]]
+    
+    return X_train_treat_na, y_train_treat_na, X_test_treat_na, y_test_treat_na
+
 ### TREAT DUPLICATE FUNCTION ###
 def treat_duplicate(df: pd.DataFrame, keep_in: str="first") -> pd.DataFrame:
     
@@ -369,24 +455,25 @@ def treat_duplicate(df: pd.DataFrame, keep_in: str="first") -> pd.DataFrame:
     df_treat_duplicate = df.drop_duplicates(keep=keep_in)
 
     return df_treat_duplicate
-
-### TREAT OUTLIERS FUNCTION ###
-def treat_outliers(df: pd.DataFrame, method: str):
     
-    """
-    The function identifies and removes outlying observations from the dataset (if present).
-
-    Parameters:
-        df_treat_duplicate (Pandas DataFrame): data structure with no missing values or duplicated entries
-        method (str): automatic outlier detection method (if: isolation forest, mcd: minimum covariance distance, lof: local outlier factor, svm: one-class support vector machine)
     
-    Returns:
-        df_treat_outlier (Pandas DataFrame): data structure with no outlying obrervations
-    """
+# ### TREAT OUTLIERS FUNCTION ###
+# def treat_outliers(df: pd.DataFrame, method: str):
+    
+#     """
+#     The function identifies and removes outlying observations from the dataset (if present).
+
+#     Parameters:
+#         df_treat_duplicate (Pandas DataFrame): data structure with no missing values or duplicated entries
+#         method (str): automatic outlier detection method (if: isolation forest, mcd: minimum covariance distance, lof: local outlier factor, svm: one-class support vector machine)
+    
+#     Returns:
+#         df_treat_outlier (Pandas DataFrame): data structure with no outlying obrervations
+#     """
 
     
 
-    return None
+#     return None
 
 
 
