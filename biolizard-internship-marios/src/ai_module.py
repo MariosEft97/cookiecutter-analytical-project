@@ -471,6 +471,8 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
     """
     The function identifies and removes outlying observations from the dataset (if present) using automatic outlier detection methods.
 
+    Source: https://machinelearningmastery.com/model-based-outlier-detection-and-removal-in-python/
+
     Parameters:
         train_df (Pandas DataFrame): data structure train sample
         test_df (Pandas DataFrame): data structure test sample
@@ -571,9 +573,6 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
     test_df_treat_outliers = pd.concat([X_test_df_identifier, X_test_df_categorical, X_test_df_continuous, y_test], axis=1)
 
     return train_df_treat_outliers, test_df_treat_outliers
-
-
-
 
 # def data_processing(df, missing=True, impute=0.5, imputer, outliers=True, normalize=False, standardize=True, encoding=False):
     
