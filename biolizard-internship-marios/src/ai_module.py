@@ -13,6 +13,11 @@ pio.renderers.default = "vscode"
 from IPython.display import display, clear_output
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import IsolationForest
+from sklearn.covariance import EllipticEnvelope
+from sklearn.neighbors import LocalOutlierFactor
+from sklearn.svm import OneClassSVM
+import warnings
+warnings.filterwarnings('ignore')
 
 ### DATA LOAD FUNCTION ###
 def data_load(folder: str, filename: str) -> pd.DataFrame:
@@ -373,7 +378,7 @@ def treat_nan(X_train: pd.DataFrame, y_train: pd.DataFrame, X_test: pd.DataFrame
         df_treat_na (Pandas DataFrame): data structure with no missing values
     """
 
-    if not isinstance(X_train, pd.DataFrame) or not isinstance(y_train, pd.DataFrame) or not isinstance(X_test, pd.DataFrame) or not isinstance(y_test, pd.DataFrame)or not isinstance(identifier, list) or not isinstance(categorical, list) or not isinstance(continuous, list) or not isinstance(target, str) or not isinstance(drop_nan_rows, bool) or not isinstance(impute_cutoff, float) or not isinstance(categorical_imputer, str) or not isinstance(continuous_imputer, str):
+    if not isinstance(X_train, pd.DataFrame) or not isinstance(y_train, pd.DataFrame) or not isinstance(X_test, pd.DataFrame) or not isinstance(y_test, pd.DataFrame) or not isinstance(identifier, list) or not isinstance(categorical, list) or not isinstance(continuous, list) or not isinstance(target, str) or not isinstance(drop_nan_rows, bool) or not isinstance(impute_cutoff, float) or not isinstance(categorical_imputer, str) or not isinstance(continuous_imputer, str):
         raise TypeError
    
     train_df = pd.concat([X_train, y_train], axis=1)
@@ -450,7 +455,8 @@ def treat_duplicate(train_df: pd.DataFrame, test_df: pd.DataFrame, keep_in: str=
         train_df_treat_duplicate (Pandas DataFrame): data structure with no duplicated entries (train sample)
         test_df_treat_duplicate (Pandas DataFrame): data structure with no duplicated entries (test sample)
     '''
-    if not isinstance(train_df, pd.DataFrame) or not isinstance(test_df, pd.DataFrame)or not isinstance(keep_in, str):
+
+    if not isinstance(train_df, pd.DataFrame) or not isinstance(test_df, pd.DataFrame) or not isinstance(keep_in, str):
         raise TypeError
 
     train_df_treat_duplicate = train_df.drop_duplicates(keep=keep_in)
@@ -460,7 +466,7 @@ def treat_duplicate(train_df: pd.DataFrame, test_df: pd.DataFrame, keep_in: str=
     
     
 ### TREAT OUTLIERS FUNCTION ###
-def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, method: str, outlier_fraction: float=0.1):
+def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str, method: str, outlier_fraction: float=0.01) -> pd.DataFrame:
     
     """
     The function identifies and removes outlying observations from the dataset (if present) using automatic outlier detection methods.
@@ -468,15 +474,103 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, method: str, o
     Parameters:
         train_df (Pandas DataFrame): data structure train sample
         test_df (Pandas DataFrame): data structure test sample
+        identifier (list): identifier features of the dataset
+        categorical (list): categorical features of the dataset
+        continuous (list): continuous features of the dataset
+        target (str): target variable
         method (str): automatic outlier detection method (if: isolation forest, mcd: minimum covariance distance, lof: local outlier factor, svm: one-class support vector machine)
+        outlier_fraction: proportion of outliers in the data set (0-0.5, default=0.01)
     
     Returns:
-        df_treat_outlier (Pandas DataFrame): data structure with no outlying obrervations
+        train_df_treat_outliers (Pandas DataFrame): data structure with no outlying obrervations (train sample)
+        test_df_treat_outliers (Pandas DataFrame): data structure with no outlying obrervations (test sample)
     """
 
+    if not isinstance(train_df, pd.DataFrame) or not isinstance(test_df, pd.DataFrame) or not isinstance(identifier, list) or not isinstance(categorical, list) or not isinstance(continuous, list) or not isinstance(target, str) or not isinstance(method, str) or not isinstance(outlier_fraction, float):
+        raise TypeError
     
+    categorical_without_target = categorical.copy()
+    categorical_without_target.remove(target)
 
-    return None
+    X_train = train_df.drop(columns=[target])
+    X_train_df_identifier = X_train[identifier]
+    X_train_df_categorical = X_train[categorical_without_target]
+    X_train_df_continuous = X_train[continuous]
+    y_train = train_df[target]
+
+
+    X_test = test_df.drop(columns=[target])
+    X_test_df_identifier = X_test[identifier]
+    X_test_df_categorical = X_test[categorical_without_target]
+    X_test_df_continuous = X_test[continuous]
+    y_test = test_df[target]
+
+    if method == "if":
+        iso_train = IsolationForest(contamination=outlier_fraction)
+        
+        # identify outliers in the train set
+        yhat_train = iso_train.fit_predict(X_train_df_continuous)
+        # select all rows that are not outliers
+        mask_train = yhat_train != -1
+        X_train_df_identifier, X_train_df_categorical, X_train_df_continuous, y_train = X_train_df_identifier[mask_train], X_train_df_categorical[mask_train], X_train_df_continuous[mask_train], y_train[mask_train]
+        
+        iso_test = IsolationForest(contamination=outlier_fraction)
+
+        # identify outliers in the test set
+        yhat_test = iso_test.fit_predict(X_test_df_continuous)
+        # select all rows that are not outliers
+        mask_test = yhat_test != -1
+        X_test_df_identifier, X_test_df_categorical, X_test_df_continuous, y_test = X_test_df_identifier[mask_test], X_test_df_categorical[mask_test], X_test_df_continuous[mask_test], y_test[mask_test]
+
+    elif method == "mcd":
+        mcd = EllipticEnvelope(contamination=outlier_fraction)
+        
+        # identify outliers in the train set
+        yhat_train = mcd.fit_predict(X_train_df_continuous)
+        # select all rows that are not outliers
+        mask_train = yhat_train != -1
+        X_train_df_identifier, X_train_df_categorical, X_train_df_continuous, y_train = X_train_df_identifier[mask_train], X_train_df_categorical[mask_train], X_train_df_continuous[mask_train], y_train[mask_train]
+        
+        # identify outliers in the test set
+        yhat_test = mcd.fit_predict(X_test_df_continuous)
+        # select all rows that are not outliers
+        mask_test = yhat_test != -1
+        X_test_df_identifier, X_test_df_categorical, X_test_df_continuous, y_test = X_test_df_identifier[mask_test], X_test_df_categorical[mask_test], X_test_df_continuous[mask_test], y_test[mask_test]
+
+    elif method == "lof":
+        lof = LocalOutlierFactor()
+        
+        # identify outliers in the train set
+        yhat_train = lof.fit_predict(X_train_df_continuous)
+        # select all rows that are not outliers
+        mask_train = yhat_train != -1
+        X_train_df_identifier, X_train_df_categorical, X_train_df_continuous, y_train = X_train_df_identifier[mask_train], X_train_df_categorical[mask_train], X_train_df_continuous[mask_train], y_train[mask_train]
+        
+        # identify outliers in the test set
+        yhat_test = lof.fit_predict(X_test_df_continuous)
+        # select all rows that are not outliers
+        mask_test = yhat_test != -1
+        X_test_df_identifier, X_test_df_categorical, X_test_df_continuous, y_test = X_test_df_identifier[mask_test], X_test_df_categorical[mask_test], X_test_df_continuous[mask_test], y_test[mask_test]
+    
+    elif method == "svm":
+        svm = OneClassSVM(nu=outlier_fraction)
+        
+        # identify outliers in the train set
+        yhat_train = svm.fit_predict(X_train_df_continuous)
+        # select all rows that are not outliers
+        mask_train = yhat_train != -1
+        X_train_df_identifier, X_train_df_categorical, X_train_df_continuous, y_train = X_train_df_identifier[mask_train], X_train_df_categorical[mask_train], X_train_df_continuous[mask_train], y_train[mask_train]
+        
+        # identify outliers in the test set
+        yhat_test = svm.fit_predict(X_test_df_continuous)
+        # select all rows that are not outliers
+        mask_test = yhat_test != -1
+        X_test_df_identifier, X_test_df_categorical, X_test_df_continuous, y_test = X_test_df_identifier[mask_test], X_test_df_categorical[mask_test], X_test_df_continuous[mask_test], y_test[mask_test]
+    
+    train_df_treat_outliers = pd.concat([X_train_df_identifier, X_train_df_categorical, X_train_df_continuous, y_train], axis=1)
+    test_df_treat_outliers = pd.concat([X_test_df_identifier, X_test_df_categorical, X_test_df_continuous, y_test], axis=1)
+
+    return train_df_treat_outliers, test_df_treat_outliers
 
 
 
