@@ -10,7 +10,7 @@ from tabulate import tabulate
 import plotly.express as px
 import plotly.io as pio
 pio.renderers.default = "vscode"
-from IPython.display import display, clear_output
+from IPython.display import display
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import IsolationForest
 from sklearn.covariance import EllipticEnvelope
@@ -18,6 +18,8 @@ from sklearn.neighbors import LocalOutlierFactor
 from sklearn.svm import OneClassSVM
 import warnings
 warnings.filterwarnings('ignore')
+import plotly.graph_objects as go
+from ipywidgets import widgets
 
 ### DATA LOAD FUNCTION ###
 def data_load(folder: str, filename: str) -> pd.DataFrame:
@@ -573,6 +575,69 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
     test_df_treat_outliers = pd.concat([X_test_df_identifier, X_test_df_categorical, X_test_df_continuous, y_test], axis=1)
 
     return train_df_treat_outliers, test_df_treat_outliers
+
+### CUSTOM BOXPLOT FUNCTION ###
+def custom_boxplot(df: pd.DataFrame, features: list, target: str, title: str, xtitle: str, ytitle: str, dropdown_desrciption: str, stratify: str="Yes") -> None:
+    
+    '''
+    The function creates an interactive boxplot.
+
+    Parameters:
+        df (Pandas DataFrame): data structure with loaded data
+        features (list): list of predictor features
+        target (str): target variable
+        title (str): plot title
+        xtitle (str): x axis title
+        ytitle (str): y axis title
+        dropdown_desrciption (str): dropdown widget description
+        stratify (str): show feature values stratified by the target feature
+    
+    Returns:
+        None
+    '''
+
+    feature_list = []
+    for feature in features:
+        feature_list.append(feature)
+    
+    feature = widgets.Dropdown(description=dropdown_desrciption, value=feature_list[0], options=feature_list)
+
+    # Assign an empty figure widget one trace
+    if stratify == "Yes":
+        trace = go.Box(x=df[target], y=df[feature.value], boxmean=True)
+    elif stratify == "No":
+        trace = go.Box(y=df[feature.value], boxmean=True)
+    
+    g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), barmode='overlay'))
+
+    def validate():
+        if feature.value in feature_list:
+            return True
+        else:
+            return False
+    
+    def response(change):
+        if validate():
+            if feature.value:
+                temp_df = df[feature.value]
+        else:
+            temp_df = df[feature_list[0]]
+        
+        x1 = temp_df
+        
+        with g.batch_update():
+            g.data[0].y = x1
+            g.layout.barmode = 'overlay'
+            g.layout.xaxis.title = xtitle
+            g.layout.yaxis.title = ytitle
+            g.layout.title = f"{title} {feature.value}"
+    
+    feature.observe(response, names="value")
+
+    container = widgets.VBox([feature])
+    display(widgets.VBox([container, g]))
+
+
 
 # def data_processing(df, missing=True, impute=0.5, imputer, outliers=True, normalize=False, standardize=True, encoding=False):
     
