@@ -466,7 +466,6 @@ def treat_duplicate(train_df: pd.DataFrame, test_df: pd.DataFrame, keep_in: str=
 
     return train_df_treat_duplicate, test_df_treat_duplicate
     
-    
 ### TREAT OUTLIERS FUNCTION ###
 def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str, method: str, outlier_fraction: float=0.01) -> pd.DataFrame:
     
@@ -481,7 +480,7 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
         identifier (list): identifier features of the dataset
         categorical (list): categorical features of the dataset
         continuous (list): continuous features of the dataset
-        target (str): target variable
+        x_val (str): target variable
         method (str): automatic outlier detection method (if: isolation forest, mcd: minimum covariance distance, lof: local outlier factor, svm: one-class support vector machine)
         outlier_fraction: proportion of outliers in the data set (0-0.5, default=0.01)
     
@@ -577,38 +576,62 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
     return train_df_treat_outliers, test_df_treat_outliers
 
 ### CUSTOM BOXPLOT FUNCTION ###
-def custom_boxplot(df: pd.DataFrame, features: list, target: str, title: str, xtitle: str, ytitle: str, dropdown_desrciption: str, stratify: str="Yes") -> None:
+def custom_boxplot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, title: str, xtitle: str, ytitle: str, dropdown_desrciption: str, stratify: str="No", group: str="No") -> None:
     
     '''
     The function creates an interactive boxplot.
 
     Parameters:
         df (Pandas DataFrame): data structure with loaded data
-        features (list): list of predictor features
-        target (str): target variable
+        y_var (list): list of predictor features
+        x_var (str): target variable
+        group_var (str): binary variable to group the data by (if group=Yes)
         title (str): plot title
         xtitle (str): x axis title
         ytitle (str): y axis title
         dropdown_desrciption (str): dropdown widget description
-        stratify (str): show feature values stratified by the target feature
+        stratify (str): display feature values stratified by the specified feature (Yes or No, default=No)
+        group (str): group feature values by the specified feature (Yes or No, default=No)
     
     Returns:
         None
     '''
 
+    if not isinstance(df, pd.DataFrame) or not isinstance(x_var, str) or not isinstance(y_var, list) or not isinstance(group_var, str) or not isinstance(title, str) or not isinstance(xtitle, str) or not isinstance(ytitle, str) or not isinstance(dropdown_desrciption, str) or not isinstance(stratify, str) or not isinstance(group, str):
+        raise TypeError
+
+
     feature_list = []
-    for feature in features:
+    for feature in y_var:
         feature_list.append(feature)
     
     feature = widgets.Dropdown(description=dropdown_desrciption, value=feature_list[0], options=feature_list)
 
-    # Assign an empty figure widget one trace
     if stratify == "Yes":
-        trace = go.Box(x=df[target], y=df[feature.value], boxmean=True)
+        if group == "Yes":
+            filter1 = df[group_var]==df[group_var].unique()[0]
+            df1 = df[filter1]
+            trace1 = go.Box(x=df1[x_var], y=df1[feature.value], boxmean=True)
+            filter2 = df[group_var] == df[group_var].unique()[1]
+            df2 = df[filter2]
+            trace2 = go.Box(x=df2[x_var], y=df2[feature.value], boxmean=True)
+            g = go.FigureWidget(data=[trace1, trace2], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
+        elif group == "No":
+            trace = go.Box(x=df[x_var], y=df[feature.value], boxmean=True)
+            g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
     elif stratify == "No":
-        trace = go.Box(y=df[feature.value], boxmean=True)
+        if group == "Yes":
+            filter1 = df[group_var] == df[group_var].unique()[0]
+            df1 = df[filter1]
+            trace1 = go.Box(y=df1[feature.value], boxmean=True)
+            filter2 = df[group_var] == df[group_var].unique()[1]
+            df2 = df[filter2]
+            trace2 = go.Box(y=df2[feature.value], boxmean=True)
+            g = go.FigureWidget(data=[trace1, trace2], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
+        elif group == "No":
+            trace = go.Box(y=df[feature.value], boxmean=True)
+            g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
     
-    g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), barmode='overlay'))
 
     def validate():
         if feature.value in feature_list:
@@ -637,7 +660,7 @@ def custom_boxplot(df: pd.DataFrame, features: list, target: str, title: str, xt
     container = widgets.VBox([feature])
     display(widgets.VBox([container, g]))
 
-
+### DIMENSIONALITY REDUCTION FUNCTION ###
 
 # def data_processing(df, missing=True, impute=0.5, imputer, outliers=True, normalize=False, standardize=True, encoding=False):
     
