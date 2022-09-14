@@ -2,6 +2,7 @@
 import sys
 sys.path.append(r"C:\Users\35799\Desktop\cookiecutter-analytical-project\biolizard-internship-marios\src")
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.io as pio
 pio.renderers.default = "vscode"
@@ -10,6 +11,8 @@ import warnings
 warnings.filterwarnings('ignore')
 import plotly.graph_objects as go
 from ipywidgets import widgets
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 ### CORRELATIONS FUNCTION ###
 def correlations(df: pd.DataFrame, type: str="pearson", printout: str="matrix") -> pd.DataFrame:
@@ -127,14 +130,49 @@ def custom_boxplot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, ti
     display(widgets.VBox([container, g]))
 
 ### DIMENSIONALITY REDUCTION FUNCTION ###
-def dimensionality_reduction():
+def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str, method: str) -> pd.DataFrame:
     
     '''
     The function performs dimensionality reduction techniques on the given data.
 
     Parameters:
-
+        train_df (Pandas DataFrame): data structure with train sample
+        test_df (Pandas DataFrame): data structure with test sample
+        identifier (list): identifier features of the dataset
+        categorical (list): categorical features of the dataset
+        continuous (list): continuous features of the dataset
+        target (str): target variable
+        method (str): dimensionality reduction method (pca: PCA, umap: UMAP, tsne: t-SNE)
     Returns:
 
     '''
-    return None
+    if not isinstance(train_df, pd.DataFrame) or not isinstance(test_df, pd.DataFrame) or not isinstance(identifier, list) or not isinstance(categorical, list) or not isinstance(continuous, list) or not isinstance(target, str) or not isinstance(method, str):
+        raise TypeError
+
+    X_train = train_df.drop(columns=[target])
+    y_train = train_df[[target]]
+    X_test = test_df.drop(columns=[target])
+    y_test = test_df[[target]]
+
+    if method == "pca":
+        X_train_continuous = X_train.loc[:,continuous].values
+        X_train_continuous = np.array(X_train_continuous)
+        standard_scaler = StandardScaler()
+        X_train_continuous_scaled = standard_scaler.fit_transform(X_train_continuous)
+
+        pca = PCA()
+        pca.fit(X_train_continuous_scaled)
+        
+        explained_variance = list(np.cumsum(pca.explained_variance_ratio_))
+        explained_variance.insert(0,0)
+        explained_variance = [i * 100 for i in explained_variance]
+
+        fig = go.Figure(data=go.Scatter(y=explained_variance))
+
+        fig.update_layout(go.Layout(title='Percentage of Explained Variance per Principal Component',
+                                xaxis=go.XAxis(title='Number of PCs', range=[0, X_train_continuous_scaled.shape[0]-1]),
+                                yaxis=go.YAxis(title='Explained Variance')
+                                ))
+
+        fig.show()
+

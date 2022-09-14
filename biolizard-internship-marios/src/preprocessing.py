@@ -182,12 +182,12 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
     Source: https://machinelearningmastery.com/model-based-outlier-detection-and-removal-in-python/
 
     Parameters:
-        train_df (Pandas DataFrame): data structure train sample
-        test_df (Pandas DataFrame): data structure test sample
+        train_df (Pandas DataFrame): data structure with train sample
+        test_df (Pandas DataFrame): data structure with test sample
         identifier (list): identifier features of the dataset
         categorical (list): categorical features of the dataset
         continuous (list): continuous features of the dataset
-        x_val (str): target variable
+        target (str): target variable
         method (str): automatic outlier detection method (if: isolation forest, mcd: minimum covariance distance, lof: local outlier factor, svm: one-class support vector machine)
         outlier_fraction: proportion of outliers in the data set (0-0.5, default=0.01)
     
