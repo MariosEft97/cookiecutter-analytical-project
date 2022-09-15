@@ -1,14 +1,20 @@
 # LOAD PACKAGES
 import sys
 sys.path.append(r"C:\Users\35799\Desktop\cookiecutter-analytical-project\biolizard-internship-marios\src")
+import warnings
+warnings.filterwarnings('ignore')
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import IsolationForest
 from sklearn.covariance import EllipticEnvelope
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.svm import OneClassSVM
-import warnings
-warnings.filterwarnings('ignore')
+# from imblearn.over_sampling import RandomOverSampler
+# from imblearn.under_sampling import RandomUnderSampler
+from tabulate import tabulate
+from IPython.display import display
+
 
 ### DATA SPLIT FUNCTION ###
 def data_split(df: pd.DataFrame, target: str, method: str="tt", random_state: int=None, train_proportion: float=0.8, test_proportion: float=0.2, validation_proportion:float=0.25, stratify: str="Yes") -> pd.DataFrame:
@@ -189,7 +195,7 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
         continuous (list): continuous features of the dataset
         target (str): target variable
         method (str): automatic outlier detection method (if: isolation forest, mcd: minimum covariance distance, lof: local outlier factor, svm: one-class support vector machine)
-        outlier_fraction: proportion of outliers in the data set (0-0.5, default=0.01)
+        outlier_fraction (float): proportion of estimated outliers in the data set (0-0.5, default=0.01)
     
     Returns:
         train_df_treat_outliers (Pandas DataFrame): data structure with no outlying obrervations (train sample)
@@ -220,64 +226,138 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
         
         # identify outliers in the train set
         yhat_train = iso_train.fit_predict(X_train_df_continuous)
+        # select outliers
+        train_outlier_mask = yhat_train == -1
+        train_outliers_df = pd.concat([X_train_df_identifier[train_outlier_mask], X_train_df_categorical[train_outlier_mask], X_train_df_continuous[train_outlier_mask], y_train[train_outlier_mask]], axis=1)
         # select all rows that are not outliers
         mask_train = yhat_train != -1
         X_train_df_identifier, X_train_df_categorical, X_train_df_continuous, y_train = X_train_df_identifier[mask_train], X_train_df_categorical[mask_train], X_train_df_continuous[mask_train], y_train[mask_train]
+        
         
         iso_test = IsolationForest(contamination=outlier_fraction)
 
         # identify outliers in the test set
         yhat_test = iso_test.fit_predict(X_test_df_continuous)
+        # select outliers
+        test_outlier_mask = yhat_test == -1
+        test_outliers_df = pd.concat([X_test_df_identifier[test_outlier_mask], X_test_df_categorical[test_outlier_mask], X_test_df_continuous[test_outlier_mask], y_test[test_outlier_mask]], axis=1)
         # select all rows that are not outliers
         mask_test = yhat_test != -1
         X_test_df_identifier, X_test_df_categorical, X_test_df_continuous, y_test = X_test_df_identifier[mask_test], X_test_df_categorical[mask_test], X_test_df_continuous[mask_test], y_test[mask_test]
+        
 
     elif method == "mcd":
         mcd = EllipticEnvelope(contamination=outlier_fraction)
         
         # identify outliers in the train set
         yhat_train = mcd.fit_predict(X_train_df_continuous)
+        # select outliers
+        train_outlier_mask = yhat_train == -1
+        train_outliers_df = pd.concat([X_train_df_identifier[train_outlier_mask], X_train_df_categorical[train_outlier_mask], X_train_df_continuous[train_outlier_mask], y_train[train_outlier_mask]], axis=1)
         # select all rows that are not outliers
         mask_train = yhat_train != -1
         X_train_df_identifier, X_train_df_categorical, X_train_df_continuous, y_train = X_train_df_identifier[mask_train], X_train_df_categorical[mask_train], X_train_df_continuous[mask_train], y_train[mask_train]
         
         # identify outliers in the test set
         yhat_test = mcd.fit_predict(X_test_df_continuous)
+       # select outliers
+        test_outlier_mask = yhat_test == -1
+        test_outliers_df = pd.concat([X_test_df_identifier[test_outlier_mask], X_test_df_categorical[test_outlier_mask], X_test_df_continuous[test_outlier_mask], y_test[test_outlier_mask]], axis=1)
         # select all rows that are not outliers
         mask_test = yhat_test != -1
         X_test_df_identifier, X_test_df_categorical, X_test_df_continuous, y_test = X_test_df_identifier[mask_test], X_test_df_categorical[mask_test], X_test_df_continuous[mask_test], y_test[mask_test]
-
+        
     elif method == "lof":
         lof = LocalOutlierFactor()
         
         # identify outliers in the train set
         yhat_train = lof.fit_predict(X_train_df_continuous)
+        # select outliers
+        train_outlier_mask = yhat_train == -1
+        train_outliers_df = pd.concat([X_train_df_identifier[train_outlier_mask], X_train_df_categorical[train_outlier_mask], X_train_df_continuous[train_outlier_mask], y_train[train_outlier_mask]], axis=1)
         # select all rows that are not outliers
         mask_train = yhat_train != -1
         X_train_df_identifier, X_train_df_categorical, X_train_df_continuous, y_train = X_train_df_identifier[mask_train], X_train_df_categorical[mask_train], X_train_df_continuous[mask_train], y_train[mask_train]
         
         # identify outliers in the test set
         yhat_test = lof.fit_predict(X_test_df_continuous)
+        # select outliers
+        test_outlier_mask = yhat_test == -1
+        test_outliers_df = pd.concat([X_test_df_identifier[test_outlier_mask], X_test_df_categorical[test_outlier_mask], X_test_df_continuous[test_outlier_mask], y_test[test_outlier_mask]], axis=1)
         # select all rows that are not outliers
         mask_test = yhat_test != -1
         X_test_df_identifier, X_test_df_categorical, X_test_df_continuous, y_test = X_test_df_identifier[mask_test], X_test_df_categorical[mask_test], X_test_df_continuous[mask_test], y_test[mask_test]
-    
+        
     elif method == "svm":
         svm = OneClassSVM(nu=outlier_fraction)
         
         # identify outliers in the train set
         yhat_train = svm.fit_predict(X_train_df_continuous)
+        # select outliers
+        train_outlier_mask = yhat_train == -1
+        train_outliers_df = pd.concat([X_train_df_identifier[train_outlier_mask], X_train_df_categorical[train_outlier_mask], X_train_df_continuous[train_outlier_mask], y_train[train_outlier_mask]], axis=1)
         # select all rows that are not outliers
         mask_train = yhat_train != -1
         X_train_df_identifier, X_train_df_categorical, X_train_df_continuous, y_train = X_train_df_identifier[mask_train], X_train_df_categorical[mask_train], X_train_df_continuous[mask_train], y_train[mask_train]
         
         # identify outliers in the test set
         yhat_test = svm.fit_predict(X_test_df_continuous)
+        # select outliers
+        test_outlier_mask = yhat_test == -1
+        test_outliers_df = pd.concat([X_test_df_identifier[test_outlier_mask], X_test_df_categorical[test_outlier_mask], X_test_df_continuous[test_outlier_mask], y_test[test_outlier_mask]], axis=1)
         # select all rows that are not outliers
         mask_test = yhat_test != -1
         X_test_df_identifier, X_test_df_categorical, X_test_df_continuous, y_test = X_test_df_identifier[mask_test], X_test_df_categorical[mask_test], X_test_df_continuous[mask_test], y_test[mask_test]
-    
+        
+    method_dict = {"if": "Isolation Forest", "mcd": "Minimum Covariance Distance", "lof": "Local Outlier Factor", "svm": "One-class Support Vector Machine"}
+    print(f"The following entries are probable outliers as identified by the {method_dict[method]} technique:")
+    print(f"Train set outliers:")
+    display(train_outliers_df)
+    print(f"Test set outliers:")
+    display(test_outliers_df)
+
+
     train_df_treat_outliers = pd.concat([X_train_df_identifier, X_train_df_categorical, X_train_df_continuous, y_train], axis=1)
     test_df_treat_outliers = pd.concat([X_test_df_identifier, X_test_df_categorical, X_test_df_continuous, y_test], axis=1)
 
     return train_df_treat_outliers, test_df_treat_outliers
+
+### TARGET VARIABLE BALANCE FUNCTION ###
+def target_balance(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str, method: str, imbalance_fraction: float=0.5) -> pd.DataFrame:
+    
+    """
+    The function checks whether there is imbalance in the target feature and and if there is, it uses under- or over-sampling techniques to create a balanced dataset.
+
+    Parameters:
+        train_df (Pandas DataFrame): data structure with train sample
+        test_df (Pandas DataFrame): data structure with test sample
+        identifier (list): identifier features of the dataset
+        categorical (list): categorical features of the dataset
+        continuous (list): continuous features of the dataset
+        target (str): target variable
+        method (str): under- or over-sampling technique (under or over)
+        imbalance_fraction (float): fraction of acceptable imbalance between the target feature levels (0-1, default=0.5)
+    
+    Returns:
+        
+    """
+
+    if not isinstance(train_df, pd.DataFrame) or not isinstance(test_df, pd.DataFrame) or not isinstance(identifier, list) or not isinstance(categorical, list) or not isinstance(continuous, list) or not isinstance(target, str) or not isinstance(method, str) or not isinstance(imbalance_fraction, float):
+        raise TypeError
+    
+    X_train = train_df.drop(columns=[target])
+    y_train = train_df[target]
+    X_test = test_df.drop(columns=[target])
+    y_test = test_df[target]
+
+    top_count = max(train_df[target].value_counts())
+    min_count = min(train_df[target].value_counts())
+    average_count = np.mean(train_df[target].value_counts())
+    total_count = sum(train_df[target].value_counts())
+
+    level_counts = []
+    for key, value in train_df[target].value_counts().sort_index(ascending=True).to_dict().items():
+        level_counts.append([key, value, round(value/total_count, 3)])
+    print(tabulate(level_counts, headers=["Target Feature Levels", "Counts", "Percentages"]))
+
+    

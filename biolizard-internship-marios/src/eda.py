@@ -7,12 +7,12 @@ import plotly.express as px
 import plotly.io as pio
 pio.renderers.default = "vscode"
 from IPython.display import display
-import warnings
-warnings.filterwarnings('ignore')
 import plotly.graph_objects as go
 from ipywidgets import widgets
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+import warnings
+warnings.filterwarnings('ignore')
 
 ### CORRELATIONS FUNCTION ###
 def correlations(df: pd.DataFrame, type: str="pearson", printout: str="matrix") -> pd.DataFrame:
@@ -154,6 +154,9 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
     X_test = test_df.drop(columns=[target])
     y_test = test_df[[target]]
 
+    # X_train_identifier = X_train.loc[:,identifier]
+    # X_train_categorical = X_train.loc[:,categorical]
+
     if method == "pca":
         X_train_continuous = X_train.loc[:,continuous].values
         X_train_continuous = np.array(X_train_continuous)
@@ -161,7 +164,7 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
         X_train_continuous_scaled = standard_scaler.fit_transform(X_train_continuous)
 
         pca = PCA()
-        pca.fit(X_train_continuous_scaled)
+        pca.fit_transform(X_train_continuous_scaled)
         
         explained_variance = list(np.cumsum(pca.explained_variance_ratio_))
         explained_variance.insert(0,0)
@@ -170,9 +173,13 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
         fig = go.Figure(data=go.Scatter(y=explained_variance))
 
         fig.update_layout(go.Layout(title='Percentage of Explained Variance per Principal Component',
-                                xaxis=go.XAxis(title='Number of PCs', range=[0, X_train_continuous_scaled.shape[0]-1]),
-                                yaxis=go.YAxis(title='Explained Variance')
+                                xaxis=go.layout.XAxis(title='Number of PCs', range=[0, len(pca.components_)]),
+                                yaxis=go.layout.YAxis(title='Explained Variance')
                                 ))
 
         fig.show()
+
+        # df = pd.concat([X_train_identifier, X_train_categorical, pd.DataFrame(X_train_continuous_scaled), y_train])
+
+        # return df
 
