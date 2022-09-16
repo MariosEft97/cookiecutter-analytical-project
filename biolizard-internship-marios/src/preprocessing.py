@@ -10,8 +10,8 @@ from sklearn.ensemble import IsolationForest
 from sklearn.covariance import EllipticEnvelope
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.svm import OneClassSVM
-# from imblearn.over_sampling import RandomOverSampler
-# from imblearn.under_sampling import RandomUnderSampler
+from imblearn.over_sampling import RandomOverSampler
+from imblearn.under_sampling import RandomUnderSampler
 from tabulate import tabulate
 from IPython.display import display
 
@@ -310,10 +310,9 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
         X_test_df_identifier, X_test_df_categorical, X_test_df_continuous, y_test = X_test_df_identifier[mask_test], X_test_df_categorical[mask_test], X_test_df_continuous[mask_test], y_test[mask_test]
         
     method_dict = {"if": "Isolation Forest", "mcd": "Minimum Covariance Distance", "lof": "Local Outlier Factor", "svm": "One-class Support Vector Machine"}
-    print(f"The following entries are probable outliers as identified by the {method_dict[method]} technique:")
-    print(f"Train set outliers:")
+    print(f"The following entries are probable outliers as identified by the {method_dict[method]} technique (train set):")
     display(train_outliers_df)
-    print(f"Test set outliers:")
+    print(f"The following entries are probable outliers as identified by the {method_dict[method]} technique (test set):")
     display(test_outliers_df)
 
 
@@ -323,26 +322,22 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
     return train_df_treat_outliers, test_df_treat_outliers
 
 ### TARGET VARIABLE BALANCE FUNCTION ###
-def target_balance(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str, method: str, imbalance_fraction: float=0.5) -> pd.DataFrame:
+def target_balance_check(train_df: pd.DataFrame, test_df: pd.DataFrame, target: str, imbalance_fraction: float=0.5) -> None:
     
     """
-    The function checks whether there is imbalance in the target feature and and if there is, it uses under- or over-sampling techniques to create a balanced dataset.
+    The function checks whether there is imbalance in the target feature levels.
 
     Parameters:
         train_df (Pandas DataFrame): data structure with train sample
         test_df (Pandas DataFrame): data structure with test sample
-        identifier (list): identifier features of the dataset
-        categorical (list): categorical features of the dataset
-        continuous (list): continuous features of the dataset
         target (str): target variable
-        method (str): under- or over-sampling technique (under or over)
         imbalance_fraction (float): fraction of acceptable imbalance between the target feature levels (0-1, default=0.5)
     
     Returns:
-        
+        None
     """
 
-    if not isinstance(train_df, pd.DataFrame) or not isinstance(test_df, pd.DataFrame) or not isinstance(identifier, list) or not isinstance(categorical, list) or not isinstance(continuous, list) or not isinstance(target, str) or not isinstance(method, str) or not isinstance(imbalance_fraction, float):
+    if not isinstance(train_df, pd.DataFrame) or not isinstance(test_df, pd.DataFrame) or not isinstance(target, str) or not isinstance(imbalance_fraction, float):
         raise TypeError
     
     X_train = train_df.drop(columns=[target])
@@ -355,9 +350,89 @@ def target_balance(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
     average_count = np.mean(train_df[target].value_counts())
     total_count = sum(train_df[target].value_counts())
 
-    level_counts = []
+    target_feature_info = []
+    level_percentages = []
     for key, value in train_df[target].value_counts().sort_index(ascending=True).to_dict().items():
-        level_counts.append([key, value, round(value/total_count, 3)])
-    print(tabulate(level_counts, headers=["Target Feature Levels", "Counts", "Percentages"]))
+        target_feature_info.append([key, value, round(value/total_count, 3)])
+        level_percentages.append(value/total_count)
+    print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages"]))
 
+    level_percentage_diff = list(np.diff(level_percentages))
+    level_percentage_diff_sorted = sorted(level_percentage_diff)
+    level_percentage_diff_bool = [i>=imbalance_fraction for i in level_percentage_diff_sorted]
+
+    if True in level_percentage_diff_bool:
+        print("\n")
+        print("The tagret feature levels are unbalanced.")
+    else:
+        print("\n")
+        print("The tagret feature levels are balanced.")
+
+### SAMPLER FUNCTION ###
+def sampler(train_df: pd.DataFrame, test_df: pd.DataFrame, target: str, method: str, sampling_ratios: dict, random_state: int=None) -> pd.DataFrame:
     
+    """
+    The uses under- or over-sampling techniques to create a balanced dataset.
+
+    Parameters:
+        train_df (Pandas DataFrame): data structure with train sample
+        test_df (Pandas DataFrame): data structure with test sample
+        target (str): target variable
+        method (str): under- or over-sampling technique (under or over)
+        sampling_ratios (dict): dictionary containing the desired ratios of the target feature levels when sampling is done (ratios are based on the class with minimum and maximum counts in case of under- and over-sampling respectively)
+        random_state (int): random state value (default=None)
+    
+    Returns:
+        
+    """
+
+    if not isinstance(train_df, pd.DataFrame) or not isinstance(test_df, pd.DataFrame) or not isinstance(target, str) or not isinstance(method, str) or not isinstance(sampling_ratios, dict):
+        raise TypeError
+    
+    X_train = train_df.drop(columns=[target])
+    y_train = train_df[target]
+    X_test = test_df.drop(columns=[target])
+    y_test = test_df[target]
+
+    top_count = max(train_df[target].value_counts())
+    min_count = min(train_df[target].value_counts())
+    average_count = np.mean(train_df[target].value_counts())
+    total_count = sum(train_df[target].value_counts())
+
+    if method == "under":
+        target_level_counts = train_df[target].value_counts().sort_index(ascending=True).to_dict()
+        undersampling = {}
+        for level, ratio in sampling_ratios.items():
+            undersampling.update({level: min_count*ratio})
+        rus = RandomUnderSampler(sampling_strategy=undersampling, random_state=random_state)
+        X_train_rus, y_train_rus = rus.fit_resample(X_train, y_train)
+
+        total_count = sum(y_train_rus.value_counts())
+        target_feature_info = []
+        level_percentages = []
+        for key, value in y_train_rus.value_counts().sort_index(ascending=True).to_dict().items():
+            target_feature_info.append([key, value, round(value/total_count, 3)])
+            level_percentages.append(value/total_count)
+        print("Balanced target feature (undersampling):")
+        print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages"]))
+
+        return X_train_rus, y_train_rus
+    
+    elif method == "over":
+        target_level_counts = train_df[target].value_counts().sort_index(ascending=True).to_dict()
+        oversampling = {}
+        for level, ratio in sampling_ratios.items():
+            oversampling.update({level: top_count*ratio})
+        ros = RandomOverSampler(sampling_strategy=oversampling, random_state=random_state)
+        X_train_ros, y_train_ros = ros.fit_resample(X_train, y_train)
+
+        total_count = sum(y_train_ros.value_counts())
+        target_feature_info = []
+        level_percentages = []
+        for key, value in y_train_ros.value_counts().sort_index(ascending=True).to_dict().items():
+            target_feature_info.append([key, value, round(value/total_count, 3)])
+            level_percentages.append(value/total_count)
+        print("Balanced target feature (oversampling):")
+        print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages"]))
+
+        return X_train_ros, y_train_ros
