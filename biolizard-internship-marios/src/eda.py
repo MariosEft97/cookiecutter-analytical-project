@@ -44,8 +44,8 @@ def correlations(df: pd.DataFrame, type: str="pearson", printout: str="matrix") 
     
     return matrix
 
-    ### CUSTOM BOXPLOT FUNCTION ###
-def custom_boxplot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, title: str, xtitle: str, ytitle: str, dropdown_desrciption: str, stratify: str="No", group: str="No") -> None:
+### BOXPLOT FUNCTION ###
+def box_plot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, title: str, xtitle: str, ytitle: str, dropdown_desrciption: str, stratify: str="No", group: str="No") -> None:
     
     '''
     The function creates an interactive boxplot.
@@ -78,27 +78,32 @@ def custom_boxplot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, ti
 
     if stratify == "Yes":
         if group == "Yes":
-            filter1 = df[group_var]==df[group_var].unique()[0]
-            df1 = df[filter1]
-            trace1 = go.Box(x=df1[x_var], y=df1[feature.value], boxmean=True)
-            filter2 = df[group_var] == df[group_var].unique()[1]
-            df2 = df[filter2]
-            trace2 = go.Box(x=df2[x_var], y=df2[feature.value], boxmean=True)
-            g = go.FigureWidget(data=[trace1, trace2], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
+            traces = []
+            for i, group in enumerate(df[group_var].unique()):
+                filter = df[group_var]==df[group_var].unique()[i]
+                df_filtered = df[filter]
+                trace = go.Box(x=df_filtered[x_var], y=df_filtered[feature.value], name=df[group_var].unique()[i], boxmean=True)
+                traces.append(trace)
+
+            g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
+            
         elif group == "No":
-            trace = go.Box(x=df[x_var], y=df[feature.value], boxmean=True)
+            trace = go.Box(x=df[x_var], y=df[feature.value], name=feature.value, boxmean=True)
             g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
+
     elif stratify == "No":
         if group == "Yes":
-            filter1 = df[group_var] == df[group_var].unique()[0]
-            df1 = df[filter1]
-            trace1 = go.Box(y=df1[feature.value], boxmean=True)
-            filter2 = df[group_var] == df[group_var].unique()[1]
-            df2 = df[filter2]
-            trace2 = go.Box(y=df2[feature.value], boxmean=True)
-            g = go.FigureWidget(data=[trace1, trace2], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
+            traces = []
+            for i, group in enumerate(df[group_var].unique()):
+                filter = df[group_var]==df[group_var].unique()[i]
+                df_filtered = df[filter]
+                trace = go.Box(x=df_filtered[x_var], y=df_filtered[feature.value], name=df[group_var].unique()[i], boxmean=True)
+                traces.append(trace)
+
+            g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
+
         elif group == "No":
-            trace = go.Box(y=df[feature.value], boxmean=True)
+            trace = go.Box(y=df[feature.value], name=feature.value, boxmean=True)
             g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
     
 
@@ -128,6 +133,79 @@ def custom_boxplot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, ti
 
     container = widgets.VBox([feature])
     display(widgets.VBox([container, g]))
+
+### HISTOGRAM FUNCTION ###
+def hist_plot(df: pd.DataFrame, y_var: list, group_var: str, title: str, xtitle: str, ytitle: str, dropdown_desrciption: str, group: str="No") -> None:
+    
+    '''
+    The function creates an interactive histogram plot.
+
+    Parameters:
+        df (Pandas DataFrame): data structure with loaded data
+        y_var (list): list of predictor features
+        group_var (str): binary variable to group the data by (if group=Yes)
+        title (str): plot title
+        xtitle (str): x axis title
+        ytitle (str): y axis title
+        dropdown_desrciption (str): dropdown widget description
+        group (str): group feature values by the specified feature (Yes or No, default=No)
+    
+    Returns:
+        None
+    '''
+
+    if not isinstance(df, pd.DataFrame) or not isinstance(group_var, str) or not isinstance(title, str) or not isinstance(xtitle, str) or not isinstance(ytitle, str) or not isinstance(dropdown_desrciption, str) or not isinstance(group, str):
+        raise TypeError
+
+    feature_list = []
+    for feature in y_var:
+        feature_list.append(feature)
+    
+    feature = widgets.Dropdown(description=dropdown_desrciption, value=feature_list[0], options=feature_list)
+    
+    if group == "Yes":
+        traces = []
+        for i, group in enumerate(df[group_var].unique()):
+            filter = df[group_var]==df[group_var].unique()[i]
+            df_filtered = df[filter]
+            trace = go.Histogram(x=df_filtered[feature.value], name=df[group_var].unique()[i])
+            traces.append(trace)
+     
+        g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle)))
+
+    elif group == "No":
+        trace = go.Histogram(x=df[feature.value], name=feature.value)
+        g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle)))
+    
+
+    def validate():
+        if feature.value in feature_list:
+            return True
+        else:
+            return False
+    
+    def response(change):
+        if validate():
+            if feature.value:
+                temp_df = df[feature.value]
+        else:
+            temp_df = df[feature_list[0]]
+        
+        x1 = temp_df
+        
+        with g.batch_update():
+            g.data[0].x = x1
+            g.layout.xaxis.title = xtitle
+            g.layout.yaxis.title = ytitle
+            g.layout.title = f"{title} {feature.value}"
+    
+    feature.observe(response, names="value")
+
+    container = widgets.VBox([feature])
+    display(widgets.VBox([container, g]))
+
+### DISTRIBUTION PLOT ###
+
 
 ### DIMENSIONALITY REDUCTION FUNCTION ###
 def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str, method: str) -> pd.DataFrame:

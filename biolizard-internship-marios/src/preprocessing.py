@@ -322,14 +322,13 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
     return train_df_treat_outliers, test_df_treat_outliers
 
 ### TARGET VARIABLE BALANCE FUNCTION ###
-def target_balance_check(train_df: pd.DataFrame, test_df: pd.DataFrame, target: str, imbalance_fraction: float=0.5) -> None:
+def target_balance_check(train_df: pd.DataFrame, target: str, imbalance_fraction: float=0.5) -> None:
     
     """
     The function checks whether there is imbalance in the target feature levels.
 
     Parameters:
         train_df (Pandas DataFrame): data structure with train sample
-        test_df (Pandas DataFrame): data structure with test sample
         target (str): target variable
         imbalance_fraction (float): fraction of acceptable imbalance between the target feature levels (0-1, default=0.5)
     
@@ -337,17 +336,10 @@ def target_balance_check(train_df: pd.DataFrame, test_df: pd.DataFrame, target: 
         None
     """
 
-    if not isinstance(train_df, pd.DataFrame) or not isinstance(test_df, pd.DataFrame) or not isinstance(target, str) or not isinstance(imbalance_fraction, float):
+    if not isinstance(train_df, pd.DataFrame) or not isinstance(target, str) or not isinstance(imbalance_fraction, float):
         raise TypeError
     
-    X_train = train_df.drop(columns=[target])
-    y_train = train_df[target]
-    X_test = test_df.drop(columns=[target])
-    y_test = test_df[target]
-
-    top_count = max(train_df[target].value_counts())
-    min_count = min(train_df[target].value_counts())
-    average_count = np.mean(train_df[target].value_counts())
+    
     total_count = sum(train_df[target].value_counts())
 
     target_feature_info = []
@@ -369,14 +361,13 @@ def target_balance_check(train_df: pd.DataFrame, test_df: pd.DataFrame, target: 
         print("The tagret feature levels are balanced.")
 
 ### SAMPLER FUNCTION ###
-def sampler(train_df: pd.DataFrame, test_df: pd.DataFrame, target: str, method: str, sampling_ratios: dict, random_state: int=None) -> pd.DataFrame:
+def sampler(train_df: pd.DataFrame, target: str, method: str, sampling_ratios: dict, random_state: int=None) -> pd.DataFrame:
     
     """
     The uses under- or over-sampling techniques to create a balanced dataset.
 
     Parameters:
         train_df (Pandas DataFrame): data structure with train sample
-        test_df (Pandas DataFrame): data structure with test sample
         target (str): target variable
         method (str): under- or over-sampling technique (under or over)
         sampling_ratios (dict): dictionary containing the desired ratios of the target feature levels when sampling is done (ratios are based on the class with minimum and maximum counts in case of under- and over-sampling respectively)
@@ -386,21 +377,17 @@ def sampler(train_df: pd.DataFrame, test_df: pd.DataFrame, target: str, method: 
         
     """
 
-    if not isinstance(train_df, pd.DataFrame) or not isinstance(test_df, pd.DataFrame) or not isinstance(target, str) or not isinstance(method, str) or not isinstance(sampling_ratios, dict):
+    if not isinstance(train_df, pd.DataFrame) or not isinstance(target, str) or not isinstance(method, str) or not isinstance(sampling_ratios, dict):
         raise TypeError
     
     X_train = train_df.drop(columns=[target])
     y_train = train_df[target]
-    X_test = test_df.drop(columns=[target])
-    y_test = test_df[target]
 
     top_count = max(train_df[target].value_counts())
     min_count = min(train_df[target].value_counts())
-    average_count = np.mean(train_df[target].value_counts())
     total_count = sum(train_df[target].value_counts())
 
     if method == "under":
-        target_level_counts = train_df[target].value_counts().sort_index(ascending=True).to_dict()
         undersampling = {}
         for level, ratio in sampling_ratios.items():
             undersampling.update({level: min_count*ratio})
@@ -416,10 +403,11 @@ def sampler(train_df: pd.DataFrame, test_df: pd.DataFrame, target: str, method: 
         print("Balanced target feature (undersampling):")
         print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages"]))
 
-        return X_train_rus, y_train_rus
+        train_df_resampled = pd.concat([X_train_rus, y_train_rus], axis=1)
+        
+        return train_df_resampled
     
     elif method == "over":
-        target_level_counts = train_df[target].value_counts().sort_index(ascending=True).to_dict()
         oversampling = {}
         for level, ratio in sampling_ratios.items():
             oversampling.update({level: top_count*ratio})
@@ -435,4 +423,6 @@ def sampler(train_df: pd.DataFrame, test_df: pd.DataFrame, target: str, method: 
         print("Balanced target feature (oversampling):")
         print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages"]))
 
-        return X_train_ros, y_train_ros
+        train_df_resampled = pd.concat([X_train_ros, y_train_ros], axis=1)
+        
+        return train_df_resampled
