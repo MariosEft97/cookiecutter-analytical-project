@@ -205,7 +205,7 @@ def hist_plot(df: pd.DataFrame, y_var: list, group_var: str, title: str, xtitle:
     container = widgets.VBox([feature])
     display(widgets.VBox([container, g]))
 
-### DISTRIBUTION PLOT ###
+### DISTRIBUTION PLOT FUNCTION ###
 def dist_plot(df: pd.DataFrame, selection: list, title: str, xtitle: str, ytitle: str) -> None:
     
     '''
@@ -238,6 +238,50 @@ def dist_plot(df: pd.DataFrame, selection: list, title: str, xtitle: str, ytitle
 
     return None
 
+### PCA PLOT FUNCTION ###
+def pca_plot(train_df: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str,) -> None:
+    
+    '''
+    The function creates the explained cariance Vs principal components plot.
+    
+    Parameters:
+        train_df (Pandas DataFrame): data structure with train sample
+        identifier (list): identifier features of the dataset
+        categorical (list): categorical features of the dataset
+        continuous (list): continuous features of the dataset
+        target (str): target variable
+    
+    Returns:
+        None
+    '''
+
+    if not isinstance(train_df, pd.DataFrame) or not isinstance(identifier, list) or not isinstance(categorical, list) or not isinstance(continuous, list) or not isinstance(target, str):
+        raise TypeError
+    
+    X_train = train_df.drop(columns=[target])
+
+    X_train_continuous = X_train.loc[:,continuous].values
+    X_train_continuous = np.array(X_train_continuous)
+    
+    standard_scaler = StandardScaler()
+    X_train_continuous_scaled = standard_scaler.fit_transform(X_train_continuous)
+
+    pca = PCA()
+    pca.fit_transform(X_train_continuous_scaled)
+        
+    explained_variance = list(np.cumsum(pca.explained_variance_ratio_))
+    explained_variance.insert(0,0)
+    explained_variance = [i * 100 for i in explained_variance]
+
+    fig = go.Figure(data=go.Scatter(y=explained_variance))
+
+    fig.update_layout(go.Layout(title='Percentage of Explained Variance per Principal Component',
+                            xaxis=go.layout.XAxis(title='Number of PCs', range=[0, len(pca.components_)]),
+                            yaxis=go.layout.YAxis(title='Explained Variance')
+                            ))
+
+    fig.show()
+
 ### DIMENSIONALITY REDUCTION FUNCTION ###
 def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str, method: str) -> pd.DataFrame:
     
@@ -257,38 +301,6 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
     '''
     if not isinstance(train_df, pd.DataFrame) or not isinstance(test_df, pd.DataFrame) or not isinstance(identifier, list) or not isinstance(categorical, list) or not isinstance(continuous, list) or not isinstance(target, str) or not isinstance(method, str):
         raise TypeError
-
-    X_train = train_df.drop(columns=[target])
-    y_train = train_df[[target]]
-    X_test = test_df.drop(columns=[target])
-    y_test = test_df[[target]]
-
-    # X_train_identifier = X_train.loc[:,identifier]
-    # X_train_categorical = X_train.loc[:,categorical]
-
-    if method == "pca":
-        X_train_continuous = X_train.loc[:,continuous].values
-        X_train_continuous = np.array(X_train_continuous)
-        standard_scaler = StandardScaler()
-        X_train_continuous_scaled = standard_scaler.fit_transform(X_train_continuous)
-
-        pca = PCA()
-        pca.fit_transform(X_train_continuous_scaled)
-        
-        explained_variance = list(np.cumsum(pca.explained_variance_ratio_))
-        explained_variance.insert(0,0)
-        explained_variance = [i * 100 for i in explained_variance]
-
-        fig = go.Figure(data=go.Scatter(y=explained_variance))
-
-        fig.update_layout(go.Layout(title='Percentage of Explained Variance per Principal Component',
-                                xaxis=go.layout.XAxis(title='Number of PCs', range=[0, len(pca.components_)]),
-                                yaxis=go.layout.YAxis(title='Explained Variance')
-                                ))
-
-        fig.show()
-
-        # df = pd.concat([X_train_identifier, X_train_categorical, pd.DataFrame(X_train_continuous_scaled), y_train])
-
-        # return df
+    
+    return None
 
