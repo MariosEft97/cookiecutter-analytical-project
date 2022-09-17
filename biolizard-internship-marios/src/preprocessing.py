@@ -14,10 +14,11 @@ from imblearn.over_sampling import RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler
 from tabulate import tabulate
 from IPython.display import display
+import plotly.figure_factory as ff
 
 
 ### DATA SPLIT FUNCTION ###
-def data_split(df: pd.DataFrame, target: str, method: str="tt", random_state: int=None, train_proportion: float=0.8, test_proportion: float=0.2, validation_proportion:float=0.25, stratify: str="Yes") -> pd.DataFrame:
+def data_split(df: pd.DataFrame, target: str, method: str="tt", train_proportion: float=0.8, test_proportion: float=0.2, validation_proportion:float=0.25, stratify: str=True, random_state: int=None) -> pd.DataFrame:
     
     """
     The function splits the data into train-test sets or train-validation-test sets.
@@ -26,11 +27,11 @@ def data_split(df: pd.DataFrame, target: str, method: str="tt", random_state: in
         df (Pandas DataFrame): data structure with loaded data
         target (str): target variable
         method (str): split method (tt: train-test, tvt: train-validation-test, default=tt)
-        random_state (int): random state value (default=None)
         train_proportion (float): fraction of data to be used for training (0-1, default=0.8)
         test_proportion (float): fraction of data to be used for testing (0-1, default=0.2)
         validation_proportion (float): fraction of data to be used for validation (0-1, default=0.25)
-        stratify (str): stratified split (Yes or No, default=Yes)
+        stratify (bool): stratified split (True or False, default=True)
+        random_state (int): random state value (default=None)
 
     Returns:
         X (Pandas DataFrame): data structure with predictor features
@@ -44,25 +45,30 @@ def data_split(df: pd.DataFrame, target: str, method: str="tt", random_state: in
     """
     
 
-    if not isinstance(df, pd.DataFrame) or not isinstance(target, str) or not isinstance(method, str) or not isinstance(random_state, int) or not isinstance(train_proportion, float) or not isinstance(test_proportion, float) or not isinstance(validation_proportion, float) or not isinstance(stratify, str):
+    if not isinstance(df, pd.DataFrame) or not isinstance(target, str) or not isinstance(method, str) or not isinstance(train_proportion, float) or not isinstance(test_proportion, float) or not isinstance(validation_proportion, float) or not isinstance(stratify, bool) or not isinstance(random_state, int):
         raise TypeError
 
     X = df.drop(columns=[target])
     y = df[[target]]
 
-    if stratify == "No":
+    if stratify == False:
+        
         if method == "tt":
             X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, random_state=random_state)
             X_val = None
             y_val = None
+        
         elif method == "tvt":
             X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, random_state=random_state)
             X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=validation_proportion, random_state=random_state)
-    elif stratify == "Yes":
+    
+    elif stratify == True:
+        
         if method == "tt":
             X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=y, random_state=random_state)
             X_val = None
             y_val = None
+        
         elif method == "tvt":
             X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_proportion, test_size=test_proportion, stratify=y, random_state=random_state)
             X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=validation_proportion, stratify=y_train, random_state=random_state)
@@ -90,7 +96,8 @@ def treat_nan(X_train: pd.DataFrame, y_train: pd.DataFrame, X_test: pd.DataFrame
         continuous_imputer (str): how missing values are imputed (mean, median, default=mean)
     
     Returns:
-        df_treat_na (Pandas DataFrame): data structure with no missing values
+        train_treat_na (Pandas DataFrame): data structure with no missing values (train sample)
+        test_treat_na (Pandas DataFrame): data structure with no missing values (test sample)
     """
 
     if not isinstance(X_train, pd.DataFrame) or not isinstance(y_train, pd.DataFrame) or not isinstance(X_test, pd.DataFrame) or not isinstance(y_test, pd.DataFrame) or not isinstance(identifier, list) or not isinstance(categorical, list) or not isinstance(continuous, list) or not isinstance(target, str) or not isinstance(drop_nan_rows, bool) or not isinstance(impute_cutoff, float) or not isinstance(categorical_imputer, str) or not isinstance(continuous_imputer, str):
@@ -148,12 +155,7 @@ def treat_nan(X_train: pd.DataFrame, y_train: pd.DataFrame, X_test: pd.DataFrame
                     train_treat_na.dropna(axis=1, subset=[column], inplace=True)
                     test_treat_na.dropna(axis=0, subset=[column], inplace=True)
     
-    # X_train_treat_na = train_treat_na.drop(columns=[target])
-    # y_train_treat_na = train_treat_na[[target]]
-    # X_test_treat_na = test_treat_na.drop(columns=[target])
-    # y_test_treat_na = test_treat_na[[target]]
-    
-    return train_treat_na, test_treat_na # X_train_treat_na, y_train_treat_na, X_test_treat_na, y_test_treat_na
+    return train_treat_na, test_treat_na
 
 ### TREAT DUPLICATE FUNCTION ###
 def treat_duplicate(train_df: pd.DataFrame, test_df: pd.DataFrame, keep_in: str="first") -> pd.DataFrame:
@@ -162,8 +164,8 @@ def treat_duplicate(train_df: pd.DataFrame, test_df: pd.DataFrame, keep_in: str=
     The function identifies and removes duplicate entries from the dataset (if present).
 
     Parameters:
-        train_df (Pandas DataFrame): data structure train sample
-        test_df (Pandas DataFrame): data structure test sample
+        train_df (Pandas DataFrame): data structure with train sample
+        test_df (Pandas DataFrame): data structure with test sample
         keep (str): which occurance of duplicate value to keep (first, last)
     
     Returns:
@@ -322,21 +324,22 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
     return train_df_treat_outliers, test_df_treat_outliers
 
 ### TARGET VARIABLE BALANCE FUNCTION ###
-def target_balance_check(train_df: pd.DataFrame, target: str, imbalance_fraction: float=0.5) -> None:
+def target_balance_check(train_df: pd.DataFrame, target: str, imbalance_fraction: float=0.5, graphic: bool=False) -> None:
     
     """
     The function checks whether there is imbalance in the target feature levels.
 
     Parameters:
         train_df (Pandas DataFrame): data structure with train sample
-        target (str): target variable
+        target (str): target feature
         imbalance_fraction (float): fraction of acceptable imbalance between the target feature levels (0-1, default=0.5)
+        graphic (bool): whether results are shown as graphic (True or False, defaul=False)
     
     Returns:
         None
     """
 
-    if not isinstance(train_df, pd.DataFrame) or not isinstance(target, str) or not isinstance(imbalance_fraction, float):
+    if not isinstance(train_df, pd.DataFrame) or not isinstance(target, str) or not isinstance(imbalance_fraction, float) or not isinstance(graphic, bool):
         raise TypeError
     
     
@@ -344,10 +347,17 @@ def target_balance_check(train_df: pd.DataFrame, target: str, imbalance_fraction
 
     target_feature_info = []
     level_percentages = []
+    
     for key, value in train_df[target].value_counts().sort_index(ascending=True).to_dict().items():
         target_feature_info.append([key, value, round(value/total_count, 3)])
         level_percentages.append(value/total_count)
-    print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages"]))
+    
+    if graphic == True:
+        target_feature_info.insert(0, ["Target Feature Levels", "Counts", "Percentages"])
+        fig = ff.create_table(target_feature_info)
+        fig.show()
+    elif graphic == False:
+        print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages"]))
 
     level_percentage_diff = list(np.diff(level_percentages))
     level_percentage_diff_sorted = sorted(level_percentage_diff)
@@ -361,23 +371,24 @@ def target_balance_check(train_df: pd.DataFrame, target: str, imbalance_fraction
         print("The tagret feature levels are balanced.")
 
 ### SAMPLER FUNCTION ###
-def sampler(train_df: pd.DataFrame, target: str, method: str, sampling_ratios: dict, random_state: int=None) -> pd.DataFrame:
+def sampler(train_df: pd.DataFrame, target: str, method: str, sampling_ratios: dict, random_state: int=None, graphic: bool=False) -> pd.DataFrame:
     
     """
     The uses under- or over-sampling techniques to create a balanced dataset.
 
     Parameters:
         train_df (Pandas DataFrame): data structure with train sample
-        target (str): target variable
+        target (str): target feature
         method (str): under- or over-sampling technique (under or over)
         sampling_ratios (dict): dictionary containing the desired ratios of the target feature levels when sampling is done (ratios are based on the class with minimum and maximum counts in case of under- and over-sampling respectively)
         random_state (int): random state value (default=None)
+        graphic (bool): whether results are shown as graphic (True or False, defaul=False)
     
     Returns:
-        
+        train_df_resampled (pd.DataFrame): data structure with balanced target feature levels
     """
 
-    if not isinstance(train_df, pd.DataFrame) or not isinstance(target, str) or not isinstance(method, str) or not isinstance(sampling_ratios, dict):
+    if not isinstance(train_df, pd.DataFrame) or not isinstance(target, str) or not isinstance(method, str) or not isinstance(sampling_ratios, dict) or not isinstance(random_state, int):
         raise TypeError
     
     X_train = train_df.drop(columns=[target])
@@ -401,11 +412,16 @@ def sampler(train_df: pd.DataFrame, target: str, method: str, sampling_ratios: d
             target_feature_info.append([key, value, round(value/total_count, 3)])
             level_percentages.append(value/total_count)
         print("Balanced target feature (undersampling):")
-        print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages"]))
+        
+        if graphic == True:
+            target_feature_info.insert(0, ["Target Feature Levels", "Counts", "Percentages"])
+            fig = ff.create_table(target_feature_info)
+            fig.show()
+        elif graphic == False:
+            print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages"]))
 
         train_df_resampled = pd.concat([X_train_rus, y_train_rus], axis=1)
         
-        return train_df_resampled
     
     elif method == "over":
         oversampling = {}
@@ -421,8 +437,15 @@ def sampler(train_df: pd.DataFrame, target: str, method: str, sampling_ratios: d
             target_feature_info.append([key, value, round(value/total_count, 3)])
             level_percentages.append(value/total_count)
         print("Balanced target feature (oversampling):")
-        print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages"]))
+        
+        if graphic == True:
+            target_feature_info.insert(0, ["Target Feature Levels", "Counts", "Percentages"])
+            fig = ff.create_table(target_feature_info)
+            fig.show()
+        elif graphic == False:
+            print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages"]))
 
         train_df_resampled = pd.concat([X_train_ros, y_train_ros], axis=1)
         
-        return train_df_resampled
+    
+    return train_df_resampled

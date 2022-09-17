@@ -27,7 +27,7 @@ def correlations(df: pd.DataFrame, type: str="pearson", printout: str="matrix") 
         printout (str): how correlations are displayed (matrix or heatmap)
     
     Returns:
-        None
+        matrix (pd.DataFrame): data structure with the computed correlation matrix
 
     """
     if not isinstance(df, pd.DataFrame) or not isinstance(type, str) or not isinstance(printout, str):
@@ -46,7 +46,7 @@ def correlations(df: pd.DataFrame, type: str="pearson", printout: str="matrix") 
     return matrix
 
 ### BOXPLOT FUNCTION ###
-def box_plot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, title: str, xtitle: str, ytitle: str, widget_description: str, stratify: str="No", group: str="No") -> None:
+def box_plot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, title: str, xtitle: str, ytitle: str, widget_description: str, stratify: bool=False, group: bool=False) -> None:
     
     '''
     The function creates an interactive boxplot.
@@ -60,14 +60,14 @@ def box_plot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, title: s
         xtitle (str): x axis title
         ytitle (str): y axis title
         widget_description (str): widget description
-        stratify (str): display feature values stratified by the specified feature (Yes or No, default=No)
-        group (str): group feature values by the specified feature (Yes or No, default=No)
+        stratify (bool): display feature values stratified by the specified feature (True or False, default=False)
+        group (bool): group feature values by the specified feature (True or False, default=False)
     
     Returns:
         None
     '''
 
-    if not isinstance(df, pd.DataFrame) or not isinstance(x_var, str) or not isinstance(y_var, list) or not isinstance(group_var, str) or not isinstance(title, str) or not isinstance(xtitle, str) or not isinstance(ytitle, str) or not isinstance(widget_description, str) or not isinstance(stratify, str) or not isinstance(group, str):
+    if not isinstance(df, pd.DataFrame) or not isinstance(x_var, str) or not isinstance(y_var, list) or not isinstance(group_var, str) or not isinstance(title, str) or not isinstance(xtitle, str) or not isinstance(ytitle, str) or not isinstance(widget_description, str) or not isinstance(stratify, bool) or not isinstance(group, bool):
         raise TypeError
 
 
@@ -77,8 +77,8 @@ def box_plot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, title: s
     
     feature = widgets.Dropdown(description=widget_description, value=feature_list[0], options=feature_list)
 
-    if stratify == "Yes":
-        if group == "Yes":
+    if stratify == True:
+        if group == True:
             traces = []
             for i, group in enumerate(df[group_var].unique()):
                 filter = df[group_var]==df[group_var].unique()[i]
@@ -88,12 +88,12 @@ def box_plot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, title: s
 
             g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
             
-        elif group == "No":
+        elif group == False:
             trace = go.Box(x=df[x_var], y=df[feature.value], name=feature.value, boxmean=True)
             g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
 
-    elif stratify == "No":
-        if group == "Yes":
+    elif stratify == False:
+        if group == True:
             traces = []
             for i, group in enumerate(df[group_var].unique()):
                 filter = df[group_var]==df[group_var].unique()[i]
@@ -103,7 +103,7 @@ def box_plot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, title: s
 
             g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
 
-        elif group == "No":
+        elif group == False:
             trace = go.Box(y=df[feature.value], name=feature.value, boxmean=True)
             g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
     
@@ -136,7 +136,7 @@ def box_plot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, title: s
     display(widgets.VBox([container, g]))
 
 ### HISTOGRAM FUNCTION ###
-def hist_plot(df: pd.DataFrame, y_var: list, group_var: str, title: str, xtitle: str, ytitle: str, widget_description: str, group: str="No") -> None:
+def hist_plot(df: pd.DataFrame, y_var: list, group_var: str, title: str, xtitle: str, ytitle: str, widget_description: str, group: bool=False) -> None:
     
     '''
     The function creates an interactive histogram plot.
@@ -149,13 +149,13 @@ def hist_plot(df: pd.DataFrame, y_var: list, group_var: str, title: str, xtitle:
         xtitle (str): x axis title
         ytitle (str): y axis title
         widget_description (str): widget description
-        group (str): group feature values by the specified feature (Yes or No, default=No)
+        group (bool): group feature values by the specified feature (True or False, default=False)
     
     Returns:
         None
     '''
 
-    if not isinstance(df, pd.DataFrame) or not isinstance(group_var, str) or not isinstance(title, str) or not isinstance(xtitle, str) or not isinstance(ytitle, str) or not isinstance(widget_description, str) or not isinstance(group, str):
+    if not isinstance(df, pd.DataFrame) or not isinstance(group_var, str) or not isinstance(title, str) or not isinstance(xtitle, str) or not isinstance(ytitle, str) or not isinstance(widget_description, str) or not isinstance(group, bool):
         raise TypeError
 
     feature_list = []
@@ -164,7 +164,7 @@ def hist_plot(df: pd.DataFrame, y_var: list, group_var: str, title: str, xtitle:
     
     feature = widgets.Dropdown(description=widget_description, value=feature_list[0], options=feature_list)
     
-    if group == "Yes":
+    if group == True:
         traces = []
         for i, group in enumerate(df[group_var].unique()):
             filter = df[group_var]==df[group_var].unique()[i]
@@ -174,7 +174,7 @@ def hist_plot(df: pd.DataFrame, y_var: list, group_var: str, title: str, xtitle:
      
         g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle)))
 
-    elif group == "No":
+    elif group == False:
         trace = go.Histogram(x=df[feature.value], name=feature.value)
         g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle)))
     
@@ -206,93 +206,35 @@ def hist_plot(df: pd.DataFrame, y_var: list, group_var: str, title: str, xtitle:
     display(widgets.VBox([container, g]))
 
 ### DISTRIBUTION PLOT ###
-def dist_plot(df: pd.DataFrame, selection: list, title: str, xtitle: str, ytitle: str, widget_description: str) -> None:
+def dist_plot(df: pd.DataFrame, selection: list, title: str, xtitle: str, ytitle: str) -> None:
     
-#     '''
-#     The function creates an interactive distribution plot.
+    '''
+    The function creates an interactive distribution plot.
 
-#     Parameters:
-#         df (Pandas DataFrame): data structure with loaded data
-#         selection (list): list of predictor features
-#         title (str): plot title
-#         xtitle (str): x axis title
-#         ytitle (str): y axis title
-#         widget_desrciption (str): widget description
+    Parameters:
+        df (Pandas DataFrame): data structure with loaded data
+        selection (list): list of predictor features
+        title (str): plot title
+        xtitle (str): x axis title
+        ytitle (str): y axis title
     
-#     Returns:
-#         None
-#     '''
+    Returns:
+        None
+    '''
 
-#     if not isinstance(df, pd.DataFrame) or not isinstance(selection, list) or not isinstance(title, str) or not isinstance(xtitle, str) or not isinstance(ytitle, str) or not isinstance(widget_description, str):
-#         raise TypeError
+    if not isinstance(df, pd.DataFrame) or not isinstance(selection, list) or not isinstance(title, str) or not isinstance(xtitle, str) or not isinstance(ytitle, str):
+        raise TypeError
 
-#     feature_list = []
-#     for feature in selection:
-#         feature_list.append(feature)
+    feature_list = []
+    for feature in selection:
+        feature_list.append(feature)
 
-#     feature = widgets.Dropdown(description=widget_description, value=feature_list[0], options=feature_list)
-    
-#     trace = ff.create_distplot(hist_data=df[feature.value], group_labels=feature.value, show_hist=False)
-#     g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle)))
-    
+    hist_data = [df[gene] for gene in feature_list]
+    group_labels = [gene for gene in feature_list]
 
-#     def validate():
-#         if feature.value in feature_list:
-#             return True
-#         else:
-#             return False
-    
-#     def response(change):
-#         if validate():
-#             if feature.value:
-#                 temp_df = df[feature.value]
-#         else:
-#             temp_df = df[feature_list[0]]
-        
-#         x1 = temp_df
-        
-#         with g.batch_update():
-#             g.data[0].x = x1
-#             g.layout.xaxis.title = xtitle
-#             g.layout.yaxis.title = ytitle
-#             g.layout.title = f"{title} {feature.value}"
-    
-#     feature.observe(response, names="value")
-#     container = widgets.VBox([feature])
-#     display(widgets.VBox([container, g]))
-    
-    # feature = widgets.SelectMultiple(description=widget_desrciption, value=(feature_list[0],), options=feature_list)
-
-    # trace = ff.create_distplot(hist_data=df[list(feature.value)], group_labels=list(feature.value), show_hist=False)
-    # g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle)))
-
-
-    # def validate():
-    #     for feature in list(feature.value):
-    #         if feature in feature_list:
-    #             return True
-    #         else:
-    #             return False
-    
-    # def response(change):
-    #     if validate():
-    #         if feature.value:
-    #             temp_df = df[list(feature.value)]
-    #     else:
-    #         temp_df = df[feature_list[0]]
-        
-    #     x1 = temp_df
-        
-    #     with g.batch_update():
-    #         g.data[0].x = x1
-    #         g.layout.xaxis.title = xtitle
-    #         g.layout.yaxis.title = ytitle
-    #         g.layout.title = f"{title}"
-    
-    # feature.observe(response, names="value")
-
-    # container = widgets.GridBox([feature])
-    # display(widgets.VBox([container, g]))
+    fig = ff.create_distplot(hist_data, group_labels, show_hist=False)
+    fig.update_layout(title_text='Gene Expression Distribution Plot:')
+    fig.show()
 
     return None
 

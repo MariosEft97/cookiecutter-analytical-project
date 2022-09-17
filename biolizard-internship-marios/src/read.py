@@ -1,4 +1,4 @@
-# LOAD PACKAGES
+### LOAD PACKAGES ###
 import sys
 sys.path.append(r"C:\Users\35799\Desktop\cookiecutter-analytical-project\biolizard-internship-marios\src")
 import os
@@ -7,6 +7,7 @@ pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
 import numpy as np
 from tabulate import tabulate
+# from IPython.display import display
 
 ### DATA LOAD FUNCTION ###
 def data_load(folder: str, filename: str) -> pd.DataFrame:
@@ -26,9 +27,7 @@ def data_load(folder: str, filename: str) -> pd.DataFrame:
         raise TypeError
             
     filepath = os.path.join(folder, filename)
-    
-    df = ""
-    
+        
     if filepath.endswith('.xlsx'):
         df = pd.read_excel(filepath)
     elif filepath.endswith('.csv'):
@@ -42,12 +41,13 @@ def data_load(folder: str, filename: str) -> pd.DataFrame:
         print("File extension is not correct or not supported.")
         print("Please specify a one of the following: xlsx, csv, txt, json.")
     
+    # drop columns with no title
     df.drop(df.filter(regex="Unnamed"), axis=1, inplace=True)
 
     return df
 
-    ### DATA INFO FUNCTION ###
-def data_info(df: pd.DataFrame, filename: str, threshold: int=20) -> list:
+### DATA INFO FUNCTION ###
+def data_info(df: pd.DataFrame, threshold: int=20) -> list:
     
     """
     The function creates and displays a report containing the following info:
@@ -60,27 +60,23 @@ def data_info(df: pd.DataFrame, filename: str, threshold: int=20) -> list:
     
     Parameters:
         df (Pandas DataFrame): data structure with loaded data
-        filename (str): name of the data file
         threshold (int): a feature having more unique values than the threshold is considered as continuous
     
     Returns:
-        identifier (list): list with identifier columns
+        identifier (list): list with identifier features
         categorical (list): list of categorical features in the DataFrame
         continuous (list): list of continuous features in the DataFrame    
     """
 
-    if not isinstance(df, pd.DataFrame) or not isinstance(filename, str) or not isinstance(threshold, int):
+    if not isinstance(df, pd.DataFrame) or not isinstance(threshold, int):
         raise TypeError
-    
     
     # Number of entries and features
     
     entry_num = len(df)
     feature_num = len(df.columns)
     
-    print(f"DATA FILE:")
-    print(100*"-")
-    print(f"{filename}")
+    print(f"DATA INFO:")
     print(100*"-")
     print("\n")
     print("DIMENSIONS:")
@@ -89,12 +85,6 @@ def data_info(df: pd.DataFrame, filename: str, threshold: int=20) -> list:
     print(f"Features: {feature_num}")
     print(100*"-")
     print("\n")
-    
-    # print(100*"-")
-    # print(f"DATA FILE: {filename}")
-    # print(100*"-")
-    # print(f"DIMENSIONS: {entry_num} entries \t {feature_num} features")
-    # print(100*"-")
         
     # Categorical and Continuous features
     
@@ -118,6 +108,9 @@ def data_info(df: pd.DataFrame, filename: str, threshold: int=20) -> list:
     for column in categorical:
         unique_values.append([column, df.dtypes[column], df[column].value_counts().sort_index(ascending=True).to_dict()])
     
+    # continuous_statistics = round(df.describe().T, 3)
+    # continuous_statistics.insert(0, "Data Type", df.dtypes, True)
+
     for column in continuous:
         continuous_statistics.append(
             [
@@ -147,7 +140,7 @@ def data_info(df: pd.DataFrame, filename: str, threshold: int=20) -> list:
     
     print(f"CONTINUOUS FEATURES:")
     print(100*"-")
-
+    # display(continuous_statistics)
     print(tabulate(continuous_statistics, headers=["Features", "Data Type", "Count", "Mean", "Std", "Min", "25th", "Median", "75th", "Max"]))
     print(100*"-")
     print("\n")
@@ -171,18 +164,20 @@ def data_info(df: pd.DataFrame, filename: str, threshold: int=20) -> list:
     if len(with_na)>=1:
         print(f"The following features have missing values:")
         print(tabulate(with_na, headers=["Features", "Missing Data"]))
+        print(100*"-")
         print("\n")
-    else:
-        pass
         
     if len(without_na)==feature_num:
         print("There are no missing values in the dataset.")
+        print(100*"-")
+        print("\n")
     elif len(without_na)>=1:
         print(f"The following features do not have missing values:")
         print(tabulate(without_na, headers=["Features", "Missing Data"]))
-    else:
-        pass
-    print(100*"-")
+        print(100*"-")
+        print("\n")
+
+    # Duplicate values
 
     print("DUPLICATE VALUES:")
     print(100*"-")
