@@ -76,9 +76,6 @@ def data_info(df: pd.DataFrame, threshold: int=20) -> list:
     entry_num = len(df)
     feature_num = len(df.columns)
     
-    print(f"DATA INFO:")
-    print(100*"-")
-    print("\n")
     print("DIMENSIONS:")
     print(100*"-")
     print(f"Entries: {entry_num}")
