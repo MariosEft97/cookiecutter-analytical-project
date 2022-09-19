@@ -1,19 +1,21 @@
 # LOAD PACKAGES
 import sys
-from turtle import color
+from turtle import width
 sys.path.append(r"C:\Users\35799\Desktop\cookiecutter-analytical-project\biolizard-internship-marios\src")
 import pandas as pd
 import numpy as np
+import math
 import plotly.express as px
 import plotly.io as pio
 pio.renderers.default = "vscode"
 from IPython.display import display
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
+from plotly.subplots import make_subplots
 from ipywidgets import widgets
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-from scipy.stats import gaussian_kde
+# from scipy.stats import gaussian_kde
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -48,20 +50,20 @@ def correlations(df: pd.DataFrame, type: str="pearson", printout: str="matrix") 
     return matrix
 
 ### BOXPLOT FUNCTION ###
-def box_plot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, title: str, xtitle: str, ytitle: str, widget_description: str, stratify: bool=False, group: bool=False) -> None:
+def box_plot(df: pd.DataFrame, features: list, stratify_var: str, group_var: str, title: str, xtitle: str, ytitle: str, widget_description: str, stratify: bool=False, group: bool=False) -> None:
     
     '''
     The function creates an interactive boxplot.
 
     Parameters:
         df (Pandas DataFrame): data structure with loaded data
-        y_var (list): list of predictor features
-        x_var (str): target variable
-        group_var (str): binary variable to group the data by (if group=Yes)
+        features (list): list of predictor features
+        stratify_var (str): variable to stratify the data by (if stratify=True)
+        group_var (str): variable to group the data by (if group=True)
         title (str): plot title
         xtitle (str): x axis title
         ytitle (str): y axis title
-        widget_description (str): widget description
+        widget_description (str): intercative widget description
         stratify (bool): display feature values stratified by the specified feature (True or False, default=False)
         group (bool): group feature values by the specified feature (True or False, default=False)
     
@@ -69,15 +71,10 @@ def box_plot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, title: s
         None
     '''
 
-    if not isinstance(df, pd.DataFrame) or not isinstance(x_var, str) or not isinstance(y_var, list) or not isinstance(group_var, str) or not isinstance(title, str) or not isinstance(xtitle, str) or not isinstance(ytitle, str) or not isinstance(widget_description, str) or not isinstance(stratify, bool) or not isinstance(group, bool):
+    if not isinstance(df, pd.DataFrame) or not isinstance(features, list) or not isinstance(stratify_var, str) or not isinstance(group_var, str) or not isinstance(title, str) or not isinstance(xtitle, str) or not isinstance(ytitle, str) or not isinstance(widget_description, str) or not isinstance(stratify, bool) or not isinstance(group, bool):
         raise TypeError
 
-
-    feature_list = []
-    for feature in y_var:
-        feature_list.append(feature)
-    
-    feature = widgets.Dropdown(description=widget_description, value=feature_list[0], options=feature_list)
+    feature = widgets.Dropdown(description=widget_description, value=features[0], options=features)
 
     if stratify == True:
         if group == True:
@@ -85,14 +82,14 @@ def box_plot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, title: s
             for i, group in enumerate(df[group_var].unique()):
                 filter = df[group_var]==df[group_var].unique()[i]
                 df_filtered = df[filter]
-                trace = go.Box(x=df_filtered[x_var], y=df_filtered[feature.value], name=df[group_var].unique()[i], boxmean=True)
+                trace = go.Box(x=df_filtered[stratify_var], y=df_filtered[feature.value], name=df[group_var].unique()[i], boxmean=True)
                 traces.append(trace)
 
-            g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
+            g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
             
         elif group == False:
-            trace = go.Box(x=df[x_var], y=df[feature.value], name=feature.value, boxmean=True)
-            g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
+            trace = go.Box(x=df[stratify_var], y=df[feature.value], name=feature.value, boxmean=True)
+            g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
 
     elif stratify == False:
         if group == True:
@@ -103,15 +100,15 @@ def box_plot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, title: s
                 trace = go.Box(y=df_filtered[feature.value], name=df[group_var].unique()[i], boxmean=True)
                 traces.append(trace)
 
-            g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
+            g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
 
         elif group == False:
             trace = go.Box(y=df[feature.value], name=feature.value, boxmean=True)
-            g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
+            g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
     
 
     def validate():
-        if feature.value in feature_list:
+        if feature.value in features:
             return True
         else:
             return False
@@ -121,7 +118,7 @@ def box_plot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, title: s
             if feature.value:
                 temp_df = df[feature.value]
         else:
-            temp_df = df[feature_list[0]]
+            temp_df = df[features[0]]
         
         x1 = temp_df
         
@@ -137,15 +134,86 @@ def box_plot(df: pd.DataFrame, x_var: str, y_var: list, group_var: str, title: s
     container = widgets.VBox([feature])
     display(widgets.VBox([container, g]))
 
+### MULTIPLE BOXPLOTS FUNCTION ###
+def box_subplots(df: pd.DataFrame, features: list, stratify_var: str, columns: int, width: int, height: int, stratify: bool=False) -> None:
+    
+    '''
+    The function creates multiple interactive boxplots on the same figure.
+
+    Parameters:
+        df (Pandas DataFrame): data structure with loaded data
+        features (list): predictor features
+        stratify_var (str): variable to stratify the data by (if stratify=True)
+        columns (int): number of columns of the figure
+        stratify (bool): display feature values stratified by the specified feature (True or False, default=False)
+            
+    Returns:
+        None
+    '''
+
+    if not isinstance(df, pd.DataFrame) or not isinstance(features, list) or not isinstance(stratify_var, str) or not isinstance(columns, int) or not isinstance(stratify, bool):
+        raise TypeError
+
+    rows = math.ceil(len(features)/columns)
+    
+    titles = [feature for feature in features]
+    
+    outter_list = []
+    inner_list = []
+    
+    for i in range(columns):
+        inner_list.append({"type": "histogram"})
+    
+    for i in range(rows):
+        outter_list.append(inner_list)
+
+
+    fig = make_subplots(rows=rows, cols=columns, subplot_titles=tuple(titles), specs=outter_list)
+
+    coordinates = []
+    for i in range(rows):
+        for j in range(columns):
+            coordinates.append([i+1, j+1])
+    
+    for (feature), (coordinate) in zip(features, coordinates):
+        
+        if stratify==True:
+            
+            # if group==True:
+            #     for i, group in enumerate(df[group_var].unique()):
+            #         filter = df[group_var]==df[group_var].unique()[i]
+            #         df_filtered = df[filter]
+            #         fig.add_trace(go.Box(x=df_filtered[stratify_var], y=df_filtered[feature], name=df[group_var].unique()[i], boxmean=True), row=coordinate[0], col=coordinate[1])
+            
+            # elif group==False:
+
+            fig.add_trace(go.Box(x=df[stratify_var], y=df[feature], name=feature, boxmean=True), row=coordinate[0], col=coordinate[1])
+        
+        elif stratify==False:
+            
+            # if group==True:
+            #     for i, group in enumerate(df[group_var].unique()):
+            #         filter = df[group_var]==df[group_var].unique()[i]
+            #         df_filtered = df[filter]
+            #         fig.add_trace(go.Box(y=df_filtered[feature], name=df[group_var].unique()[i], boxmean=True), row=coordinate[0], col=coordinate[1])
+            
+            # elif group==False:
+
+            fig.add_trace(go.Box(y=df[feature], name=feature, boxmean=True), row=coordinate[0], col=coordinate[1])
+
+    fig.update_layout(height=rows*height, width=columns*width, showlegend=True)
+
+    fig.show()
+
 ### HISTOGRAM FUNCTION ###
-def hist_plot(df: pd.DataFrame, y_var: list, group_var: str, title: str, xtitle: str, ytitle: str, widget_description: str, group: bool=False) -> None:
+def hist_plot(df: pd.DataFrame, features: list, group_var: str, title: str, xtitle: str, ytitle: str, widget_description: str, group: bool=False) -> None:
     
     '''
     The function creates an interactive histogram plot.
 
     Parameters:
         df (Pandas DataFrame): data structure with loaded data
-        y_var (list): list of predictor features
+        features (list): list of predictor features
         group_var (str): binary variable to group the data by (if group=Yes)
         title (str): plot title
         xtitle (str): x axis title
@@ -157,14 +225,11 @@ def hist_plot(df: pd.DataFrame, y_var: list, group_var: str, title: str, xtitle:
         None
     '''
 
-    if not isinstance(df, pd.DataFrame) or not isinstance(group_var, str) or not isinstance(title, str) or not isinstance(xtitle, str) or not isinstance(ytitle, str) or not isinstance(widget_description, str) or not isinstance(group, bool):
+    if not isinstance(df, pd.DataFrame) or not isinstance(features, list) or not isinstance(group_var, str) or not isinstance(title, str) or not isinstance(xtitle, str) or not isinstance(ytitle, str) or not isinstance(widget_description, str) or not isinstance(group, bool):
         raise TypeError
 
-    feature_list = []
-    for feature in y_var:
-        feature_list.append(feature)
-    
-    feature = widgets.Dropdown(description=widget_description, value=feature_list[0], options=feature_list)
+      
+    feature = widgets.Dropdown(description=widget_description, value=features[0], options=features)
     
     if group == True:
         traces = []
@@ -174,15 +239,15 @@ def hist_plot(df: pd.DataFrame, y_var: list, group_var: str, title: str, xtitle:
             trace = go.Histogram(x=df_filtered[feature.value], name=df[group_var].unique()[i])
             traces.append(trace)
      
-        g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), barmode="group"))
+        g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), barmode="group"))
 
     elif group == False:
         trace = go.Histogram(x=df[feature.value], name=feature.value)
-        g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{feature_list[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), barmode="group"))
+        g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), barmode="group"))
     
 
     def validate():
-        if feature.value in feature_list:
+        if feature.value in features:
             return True
         else:
             return False
@@ -192,7 +257,7 @@ def hist_plot(df: pd.DataFrame, y_var: list, group_var: str, title: str, xtitle:
             if feature.value:
                 temp_df = df[feature.value]
         else:
-            temp_df = df[feature_list[0]]
+            temp_df = df[features[0]]
         
         x1 = temp_df
         
@@ -207,135 +272,137 @@ def hist_plot(df: pd.DataFrame, y_var: list, group_var: str, title: str, xtitle:
     container = widgets.VBox([feature])
     display(widgets.VBox([container, g]))
 
+### MULTIPLE HISTOGRAMS FUNCTION ###
+def hist_subplots(df: pd.DataFrame, columns: int, width: int, height: int) -> None:
+    
+    '''
+    The function creates multiple interactive histogram plots on the same figure.
+
+    Parameters:
+        df (Pandas DataFrame): data structure with loaded data
+        columns (int): number of columns of the figure
+        width (int): figure width multiplied by column number
+        height (int): figure height multiplied by column number
+            
+    Returns:
+        None
+    '''
+
+    if not isinstance(df, pd.DataFrame) or not isinstance(columns, int) or not isinstance(width, int) or not isinstance(height, int):
+        raise TypeError
+
+    features = df.columns
+
+    rows = math.ceil(len(features)/columns)
+    
+    titles = [feature for feature in features]
+    
+    outter_list = []
+    inner_list = []
+    
+    for i in range(columns):
+        inner_list.append({"type": "histogram"})
+    
+    for i in range(rows):
+        outter_list.append(inner_list)
+
+
+    fig = make_subplots(rows=rows, cols=columns, subplot_titles=tuple(titles), specs=outter_list)
+
+    coordinates = []
+    for i in range(rows):
+        for j in range(columns):
+            coordinates.append([i+1, j+1])
+    
+    for (feature), (coordinate) in zip(features, coordinates):
+        fig.add_trace(go.Histogram(x=df[feature], name=feature), row=coordinate[0], col=coordinate[1])
+
+    fig.update_layout(height=rows*height, width=columns*width, showlegend=True)
+
+    fig.show()
+
 ### DISTRIBUTION PLOT FUNCTION ###
-def dist_plot(df: pd.DataFrame, selection: list, title: str, xtitle: str, ytitle: str) -> None:
+def dist_plot(df: pd.DataFrame, title: str) -> None:
     
     '''
     The function creates an interactive distribution plot.
 
     Parameters:
         df (Pandas DataFrame): data structure with loaded data
-        selection (list): list of predictor features
         title (str): plot title
-        xtitle (str): x axis title
-        ytitle (str): y axis title
     
     Returns:
         None
     '''
 
-    if not isinstance(df, pd.DataFrame) or not isinstance(selection, list) or not isinstance(title, str) or not isinstance(xtitle, str) or not isinstance(ytitle, str):
+    if not isinstance(df, pd.DataFrame) or not isinstance(title, str):
         raise TypeError
 
-    feature_list = []
-    for feature in selection:
-        feature_list.append(feature)
-
-    hist_data = [df[gene] for gene in feature_list]
-    group_labels = [gene for gene in feature_list]
+    hist_data = [df[gene] for gene in df.columns]
+    group_labels = [gene for gene in df.columns]
 
     fig = ff.create_distplot(hist_data, group_labels, show_hist=False)
-    fig.update_layout(title_text='Gene Expression Distribution Plot:')
+    fig.update_layout(title_text=title)
     fig.show()
 
     return None
 
-### DISTRIBUTION PLOT FUNCTION (version 2 experimental)###
-def calc_curve(df: pd.DataFrame, feature: str):
-    
-    """
-    The function calculates the probability density of the given data.
-    
-    Parameters:
-        df (Pandas DataFrame): data structure with loaded data
-        feature (str): feature whose probability density we want to calculate 
-
-    Returns:
-        X (list):
-        Y (list):
-    """
-    # min_, max_ = df[feature].min(), df[feature].max()
-    # X = [min_ + i * ((max_ - min_) / 500) for i in range(501)]
-    # Y = gaussian_kde(df[feature]).evaluate(X)
-    # return(X, Y)
-    count, bins_count = np.histogram(df[feature], bins=10)
-    pdf = count/sum(count)
-    return pdf
-
-def dist_plot_v2(df: pd.DataFrame, y_var: list, group_var: str, title: str, xtitle: str, ytitle: str, widget_description: str, group: bool=False) -> None:
+### MULTIPLE DISTPLOTS FUNCTION ###
+def dist_subplots(df: pd.DataFrame, columns: int, width: int, height: int) -> None:
     
     '''
-    The function creates an interactive histogram plot.
+    The function creates multiple interactive distribution plots on the same figure.
+
+    Source: https://stackoverflow.com/questions/58803324/plotly-how-to-combine-make-subplots-and-ff-create-distplot
 
     Parameters:
         df (Pandas DataFrame): data structure with loaded data
-        y_var (list): list of predictor features
-        group_var (str): binary variable to group the data by (if group=Yes)
-        title (str): plot title
-        xtitle (str): x axis title
-        ytitle (str): y axis title
-        widget_description (str): widget description
-        group (bool): group feature values by the specified feature (True or False, default=False)
-    
+        columns (int): number of columns of the figure
+        width (int): figure width multiplied by column number
+        height (int): figure height multiplied by column number
+            
     Returns:
         None
     '''
 
-    if not isinstance(df, pd.DataFrame) or not isinstance(group_var, str) or not isinstance(title, str) or not isinstance(xtitle, str) or not isinstance(ytitle, str) or not isinstance(widget_description, str) or not isinstance(group, bool):
+    if not isinstance(df, pd.DataFrame) or not isinstance(columns, int) or not isinstance(width, int) or not isinstance(height, int):
         raise TypeError
 
-    feature_list = []
-    for feature in y_var:
-        feature_list.append(feature)
-    
-    feature = widgets.Dropdown(description=widget_description, value=feature_list[0], options=feature_list)
-    
-    if group == True:
-        traces = []
-        for i, group in enumerate(df[group_var].unique()):
-            filter = df[group_var]==df[group_var].unique()[i]
-            df_filtered = df[filter]
-            # x, y = calc_curve(df_filtered, feature.value)
-            # traces.append({"x":x, "y":y, "name":df[group_var].unique()[i]})
-            pdf = calc_curve(df_filtered, feature.value)
-            traces.append({"y":pdf, "name":df[group_var].unique()[i]})
-     
-        g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle)))
+    features = df.columns
 
-    elif group == False:
-        traces = []
-        # x, y = calc_curve(df, feature.value)
-        # traces.append({"x":x, "y":y, "name":feature.value})
-        pdf = calc_curve(df, feature.value)
-        traces.append({"y":pdf, "name":feature.value})
-        g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle)))
+    rows = math.ceil(len(features)/columns)
     
+    titles = [feature for feature in features]
+    
+    outter_list = []
+    inner_list = []
+    
+    for i in range(columns):
+        inner_list.append({"type": "histogram"})
+    
+    for i in range(rows):
+        outter_list.append(inner_list)
 
-    def validate():
-        if feature.value in feature_list:
-            return True
-        else:
-            return False
-    
-    def response(change):
-        if validate():
-            if feature.value:
-                temp_df = df[feature.value]
-        else:
-            temp_df = df[feature_list[0]]
-        
-        x1 = temp_df
-        
-        with g.batch_update():
-            g.data[0].x = x1
-            g.layout.xaxis.title = xtitle
-            g.layout.yaxis.title = ytitle
-            g.layout.title = f"{title} {feature.value}"
-    
-    feature.observe(response, names="value")
 
-    container = widgets.VBox([feature])
-    display(widgets.VBox([container, g]))
+    fig = make_subplots(rows=rows, cols=columns, subplot_titles=tuple(titles), specs=outter_list)
+
+    hist_data = [df[feature] for feature in features]
+    group_labels = [feature for feature in features]
+    dist_fig = ff.create_distplot(hist_data, group_labels, show_hist=False)
+
+    coordinates = []
+    for i in range(rows):
+        for j in range(columns):
+            coordinates.append([i+1, j+1])
+    
+    for (coordinate), (trace) in zip(coordinates, dist_fig.select_traces()):
+        fig.add_trace(trace, row=coordinate[0], col=coordinate[1])
+
+    fig.update_layout(height=rows*height, width=columns*width, showlegend=True)
+
+    fig.show()
+
+    return None
 
 ### PCA PLOT FUNCTION ###
 def pca_plot(train_df: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str,) -> None:
