@@ -1,6 +1,5 @@
 # LOAD PACKAGES
 import sys
-from turtle import width
 sys.path.append(r"C:\Users\35799\Desktop\cookiecutter-analytical-project\biolizard-internship-marios\src")
 import pandas as pd
 import numpy as np
@@ -34,20 +33,35 @@ def correlations(df: pd.DataFrame, type: str="pearson", printout: str="matrix") 
         matrix (pd.DataFrame): data structure with the computed correlation matrix
 
     """
-    if not isinstance(df, pd.DataFrame) or not isinstance(type, str) or not isinstance(printout, str):
-        raise TypeError
-    
-    matrix = df.corr(method=type)
-    type_dict = {"pearson": "Pearson", "spearman": "Spearman"}
+    if not isinstance(df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
 
-    if printout == "matrix":
-        print(f"{type_dict[type]} Correlation Matrix:")
-        display(round(matrix, 3))
-    elif printout == "heatmap":
-        fig = px.imshow(round(matrix, 3), text_auto=True, color_continuous_scale="Viridis", title=f"{type_dict[type]} Correlation Heatmap of Continuous Features")
-        fig.show()
+    elif not isinstance(type, str):
+        error_message = "type must be specified as a string\noptions:\noptions: pearson or spearman"
+        raise TypeError(error_message)
     
-    return matrix
+    elif not isinstance(printout, str):
+        error_message = "printout must be specified as a string\noptions: matrix or heatmap"
+        raise TypeError(error_message)
+
+    else:
+        
+        # calculate correlation matrix
+        matrix = df.corr(method=type)
+        type_dict = {"pearson": "Pearson", "spearman": "Spearman"}
+
+        # display correlation matrix
+        if printout == "matrix":
+            print(f"{type_dict[type]} Correlation Matrix:")
+            display(round(matrix, 3))
+        
+        # display correlation heatmap
+        elif printout == "heatmap":
+            fig = px.imshow(round(matrix, 3), text_auto=True, color_continuous_scale="Viridis", title=f"{type_dict[type]} Correlation Heatmap of Continuous Features")
+            fig.show()
+    
+        return matrix
 
 ### BOXPLOT FUNCTION ###
 def box_plot(df: pd.DataFrame, features: list, stratify_var: str, group_var: str, title: str, xtitle: str, ytitle: str, widget_description: str, stratify: bool=False, group: bool=False) -> None:
@@ -71,68 +85,120 @@ def box_plot(df: pd.DataFrame, features: list, stratify_var: str, group_var: str
         None
     '''
 
-    if not isinstance(df, pd.DataFrame) or not isinstance(features, list) or not isinstance(stratify_var, str) or not isinstance(group_var, str) or not isinstance(title, str) or not isinstance(xtitle, str) or not isinstance(ytitle, str) or not isinstance(widget_description, str) or not isinstance(stratify, bool) or not isinstance(group, bool):
-        raise TypeError
+    if not isinstance(df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
+    
+    elif not isinstance(features, list):
+        error_message = "features must be specified as a list of strings"
+        raise TypeError(error_message)
+    
+    elif not isinstance(stratify_var, str):
+        error_message = "stratify_var must be specified as a string"
+        raise TypeError(error_message)
 
-    feature = widgets.Dropdown(description=widget_description, value=features[0], options=features)
+    elif not isinstance(group_var, str):
+        error_message = "group_var must be specified as a string"
+        raise TypeError(error_message)
+    
+    elif not isinstance(title, str):
+        error_message = "title must be specified as a string"
+        raise TypeError(error_message)
+    
+    elif not isinstance(xtitle, str):
+        error_message = "xtitle must be specified as a string"
+        raise TypeError(error_message)
+    
+    elif not isinstance(ytitle, str):
+        error_message = "ytitle must be specified as a string"
+        raise TypeError(error_message)
+    
+    elif not isinstance(widget_description, str):
+        error_message = "widget_description must be specified as a string"
+        raise TypeError(error_message)
+    
+    elif not isinstance(stratify, bool):
+        error_message = "stratify must be specified as a boolean value (True or False)"
+        raise TypeError(error_message)
+    
+    elif not isinstance(group, bool):
+        error_message = "group must be specified as a boolean value (True or False)"
+        raise TypeError(error_message)
 
-    if stratify == True:
-        if group == True:
-            traces = []
-            for i, group in enumerate(df[group_var].unique()):
-                filter = df[group_var]==df[group_var].unique()[i]
-                df_filtered = df[filter]
-                trace = go.Box(x=df_filtered[stratify_var], y=df_filtered[feature.value], name=df[group_var].unique()[i], boxmean=True)
-                traces.append(trace)
+    else:
+        
+        # define widget
+        feature = widgets.Dropdown(description=widget_description, value=features[0], options=features)
 
-            g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
+        # display boxplots per level of specified stratify feature
+        if stratify == True:
+            # display boxplots per level of specified stratify feature and divide into groups based on the levels of the group feature
+            if group == True:
+                # for each level of the group feature create a trace
+                traces = []
+                for i, group in enumerate(df[group_var].unique()):
+                    filter = df[group_var]==df[group_var].unique()[i]
+                    df_filtered = df[filter]
+                    trace = go.Box(x=df_filtered[stratify_var], y=df_filtered[feature.value], name=df[group_var].unique()[i], boxmean=True)
+                    traces.append(trace)
+
+                # create initial figure with traces
+                g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
             
-        elif group == False:
-            trace = go.Box(x=df[stratify_var], y=df[feature.value], name=feature.value, boxmean=True)
-            g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
+            # no grouping is done
+            elif group == False:
+                trace = go.Box(x=df[stratify_var], y=df[feature.value], name=feature.value, boxmean=True)
+                g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
 
-    elif stratify == False:
-        if group == True:
-            traces = []
-            for i, group in enumerate(df[group_var].unique()):
-                filter = df[group_var]==df[group_var].unique()[i]
-                df_filtered = df[filter]
-                trace = go.Box(y=df_filtered[feature.value], name=df[group_var].unique()[i], boxmean=True)
-                traces.append(trace)
+        # no stratification is done
+        elif stratify == False:
+            # display boxplots divided into groups based on the levels of the specified group feature
+            if group == True:
+                # for each level of the group feature create a trace
+                traces = []
+                for i, group in enumerate(df[group_var].unique()):
+                    filter = df[group_var]==df[group_var].unique()[i]
+                    df_filtered = df[filter]
+                    trace = go.Box(y=df_filtered[feature.value], name=df[group_var].unique()[i], boxmean=True)
+                    traces.append(trace)
+                
+                # create initial figure with traces
+                g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
 
-            g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
-
-        elif group == False:
-            trace = go.Box(y=df[feature.value], name=feature.value, boxmean=True)
-            g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
-    
-
-    def validate():
-        if feature.value in features:
-            return True
-        else:
-            return False
-    
-    def response(change):
-        if validate():
-            if feature.value:
-                temp_df = df[feature.value]
-        else:
-            temp_df = df[features[0]]
+            # no grouping is done
+            elif group == False:
+                trace = go.Box(y=df[feature.value], name=feature.value, boxmean=True)
+                g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), boxmode='group'))
         
-        x1 = temp_df
+        # function to validate that feature selected on the widget belong to the specified ones
+        def validate():
+            if feature.value in features:
+                return True
+            else:
+                return False
         
-        with g.batch_update():
-            g.data[0].y = x1
-            g.layout.barmode = 'overlay'
-            g.layout.xaxis.title = xtitle
-            g.layout.yaxis.title = ytitle
-            g.layout.title = f"{title} {feature.value}"
-    
-    feature.observe(response, names="value")
+        # function to control the changes on the figure based on feature selection on the widget
+        def response(change):
+            if validate():
+                if feature.value:
+                    temp_df = df[feature.value]
+            else:
+                temp_df = df[features[0]]
+            
+            x1 = temp_df
+            
+            with g.batch_update():
+                g.data[0].y = x1
+                g.layout.barmode = 'overlay'
+                g.layout.xaxis.title = xtitle
+                g.layout.yaxis.title = ytitle
+                g.layout.title = f"{title} {feature.value}"
+        
+        feature.observe(response, names="value")
 
-    container = widgets.VBox([feature])
-    display(widgets.VBox([container, g]))
+        # display widget and figure
+        container = widgets.VBox([feature])
+        display(widgets.VBox([container, g]))
 
 ### MULTIPLE BOXPLOTS FUNCTION ###
 def box_subplots(df: pd.DataFrame, features: list, stratify_var: str, columns: int, width: int, height: int, stratify: bool=False) -> None:
@@ -150,60 +216,78 @@ def box_subplots(df: pd.DataFrame, features: list, stratify_var: str, columns: i
     Returns:
         None
     '''
-
-    if not isinstance(df, pd.DataFrame) or not isinstance(features, list) or not isinstance(stratify_var, str) or not isinstance(columns, int) or not isinstance(stratify, bool):
-        raise TypeError
-
-    rows = math.ceil(len(features)/columns)
     
-    titles = [feature for feature in features]
+    if not isinstance(df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
     
-    outter_list = []
-    inner_list = []
+    elif not isinstance(features, list):
+        error_message = "features must be specified as a list of strings"
+        raise TypeError(error_message)
     
-    for i in range(columns):
-        inner_list.append({"type": "histogram"})
-    
-    for i in range(rows):
-        outter_list.append(inner_list)
+    elif not isinstance(stratify_var, str):
+        error_message = "stratify_var must be specified as a string"
+        raise TypeError(error_message)
 
-
-    fig = make_subplots(rows=rows, cols=columns, subplot_titles=tuple(titles), specs=outter_list)
-
-    coordinates = []
-    for i in range(rows):
-        for j in range(columns):
-            coordinates.append([i+1, j+1])
+    elif not isinstance(columns, int):
+        error_message = "columns must be specified as an integer number"
+        raise TypeError(error_message)
     
-    for (feature), (coordinate) in zip(features, coordinates):
+    elif not isinstance(width, int):
+        error_message = "width must be specified as an integer number"
+        raise TypeError(error_message)
+    
+    elif not isinstance(height, int):
+        error_message = "height must be specified as an integer number"
+        raise TypeError(error_message)
+    
+    elif not isinstance(stratify, bool):
+        error_message = "stratify must be specified as a boolean value (True or False)"
+        raise TypeError(error_message)
+
+    else:
+
+        # rows of the figure are calculated according to the number of specified features and number of columns
+        rows = math.ceil(len(features)/columns)
         
-        if stratify==True:
-            
-            # if group==True:
-            #     for i, group in enumerate(df[group_var].unique()):
-            #         filter = df[group_var]==df[group_var].unique()[i]
-            #         df_filtered = df[filter]
-            #         fig.add_trace(go.Box(x=df_filtered[stratify_var], y=df_filtered[feature], name=df[group_var].unique()[i], boxmean=True), row=coordinate[0], col=coordinate[1])
-            
-            # elif group==False:
-
-            fig.add_trace(go.Box(x=df[stratify_var], y=df[feature], name=feature, boxmean=True), row=coordinate[0], col=coordinate[1])
+        # title for each subplot
+        titles = [feature for feature in features]
         
-        elif stratify==False:
+        # data structures for saving the type of each subplot
+        outter_list = []
+        inner_list = []
+        
+        for i in range(columns):
+            inner_list.append({"type": "histogram"})
+        
+        for i in range(rows):
+            outter_list.append(inner_list)
+
+        # create figure with subplots
+        fig = make_subplots(rows=rows, cols=columns, subplot_titles=tuple(titles), specs=outter_list)
+
+        # create coordinates of each subplot
+        coordinates = []
+        for i in range(rows):
+            for j in range(columns):
+                coordinates.append([i+1, j+1])
+        
+        for (feature), (coordinate) in zip(features, coordinates):
             
-            # if group==True:
-            #     for i, group in enumerate(df[group_var].unique()):
-            #         filter = df[group_var]==df[group_var].unique()[i]
-            #         df_filtered = df[filter]
-            #         fig.add_trace(go.Box(y=df_filtered[feature], name=df[group_var].unique()[i], boxmean=True), row=coordinate[0], col=coordinate[1])
+            # create stratified subplots based on the specified feature
+            if stratify==True:
+                # add subplots to the figure
+                fig.add_trace(go.Box(x=df[stratify_var], y=df[feature], name=feature, boxmean=True), row=coordinate[0], col=coordinate[1])
             
-            # elif group==False:
+            # no stratification 
+            elif stratify==False:
+                # add subplots to the figure
+                fig.add_trace(go.Box(y=df[feature], name=feature, boxmean=True), row=coordinate[0], col=coordinate[1])
 
-            fig.add_trace(go.Box(y=df[feature], name=feature, boxmean=True), row=coordinate[0], col=coordinate[1])
+        # add figure dimensions and display the legend
+        fig.update_layout(height=rows*height, width=columns*width, showlegend=True)
 
-    fig.update_layout(height=rows*height, width=columns*width, showlegend=True)
-
-    fig.show()
+        fig.show()
 
 ### HISTOGRAM FUNCTION ###
 def hist_plot(df: pd.DataFrame, features: list, group_var: str, title: str, xtitle: str, ytitle: str, widget_description: str, group: bool=False) -> None:
@@ -214,7 +298,7 @@ def hist_plot(df: pd.DataFrame, features: list, group_var: str, title: str, xtit
     Parameters:
         df (Pandas DataFrame): data structure with loaded data
         features (list): list of predictor features
-        group_var (str): binary variable to group the data by (if group=Yes)
+        group_var (str): variable to group the data by (if group=Yes)
         title (str): plot title
         xtitle (str): x axis title
         ytitle (str): y axis title
@@ -225,52 +309,89 @@ def hist_plot(df: pd.DataFrame, features: list, group_var: str, title: str, xtit
         None
     '''
 
-    if not isinstance(df, pd.DataFrame) or not isinstance(features, list) or not isinstance(group_var, str) or not isinstance(title, str) or not isinstance(xtitle, str) or not isinstance(ytitle, str) or not isinstance(widget_description, str) or not isinstance(group, bool):
-        raise TypeError
-
-      
-    feature = widgets.Dropdown(description=widget_description, value=features[0], options=features)
+    if not isinstance(df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
     
-    if group == True:
-        traces = []
-        for i, group in enumerate(df[group_var].unique()):
-            filter = df[group_var]==df[group_var].unique()[i]
-            df_filtered = df[filter]
-            trace = go.Histogram(x=df_filtered[feature.value], name=df[group_var].unique()[i])
-            traces.append(trace)
-     
-        g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), barmode="group"))
+    elif not isinstance(features, list):
+        error_message = "features must be specified as a list of strings"
+        raise TypeError(error_message)
 
-    elif group == False:
-        trace = go.Histogram(x=df[feature.value], name=feature.value)
-        g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), barmode="group"))
+    elif not isinstance(group_var, str):
+        error_message = "group_var must be specified as a string"
+        raise TypeError(error_message)
     
+    elif not isinstance(title, str):
+        error_message = "title must be specified as a string"
+        raise TypeError(error_message)
+    
+    elif not isinstance(xtitle, str):
+        error_message = "xtitle must be specified as a string"
+        raise TypeError(error_message)
+    
+    elif not isinstance(ytitle, str):
+        error_message = "ytitle must be specified as a string"
+        raise TypeError(error_message)
+    
+    elif not isinstance(widget_description, str):
+        error_message = "widget_description must be specified as a string"
+        raise TypeError(error_message)
+    
+    elif not isinstance(group, bool):
+        error_message = "group must be specified as a boolean value (True or False)"
+        raise TypeError(error_message)
 
-    def validate():
-        if feature.value in features:
-            return True
-        else:
-            return False
-    
-    def response(change):
-        if validate():
-            if feature.value:
-                temp_df = df[feature.value]
-        else:
-            temp_df = df[features[0]]
+    else:
         
-        x1 = temp_df
+        # define widget 
+        feature = widgets.Dropdown(description=widget_description, value=features[0], options=features)
         
-        with g.batch_update():
-            g.data[0].x = x1
-            g.layout.xaxis.title = xtitle
-            g.layout.yaxis.title = ytitle
-            g.layout.title = f"{title} {feature.value}"
-    
-    feature.observe(response, names="value")
+        # display boxplots divided into groups based on the levels of the specified group feature
+        if group == True:
+            # for each level of the group feature create a trace
+            traces = []
+            for i, group in enumerate(df[group_var].unique()):
+                filter = df[group_var]==df[group_var].unique()[i]
+                df_filtered = df[filter]
+                trace = go.Histogram(x=df_filtered[feature.value], name=df[group_var].unique()[i])
+                traces.append(trace)
 
-    container = widgets.VBox([feature])
-    display(widgets.VBox([container, g]))
+            # create initial figure with traces
+            g = go.FigureWidget(data=traces, layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), barmode="group"))
+
+        # no grouping is done
+        elif group == False:
+            trace = go.Histogram(x=df[feature.value], name=feature.value)
+            g = go.FigureWidget(data=[trace], layout=go.Layout(title=dict(text=f'{title}{features[0]}'), xaxis=dict(title=xtitle), yaxis=dict(title=ytitle), barmode="group"))
+        
+        # function to validate that feature selected on the widget belong to the specified ones
+        def validate():
+            if feature.value in features:
+                return True
+            else:
+                return False
+        
+        # function to control the changes on the figure based on feature selection on the widget
+        def response(change):
+            if validate():
+                if feature.value:
+                    temp_df = df[feature.value]
+            else:
+                temp_df = df[features[0]]
+            
+            x1 = temp_df
+            
+            with g.batch_update():
+                g.data[0].x = x1
+                g.layout.xaxis.title = xtitle
+                g.layout.yaxis.title = ytitle
+                g.layout.title = f"{title} {feature.value}"
+        
+        feature.observe(response, names="value")
+
+        # display widget and figure
+        container = widgets.VBox([feature])
+        display(widgets.VBox([container, g]))
 
 ### MULTIPLE HISTOGRAMS FUNCTION ###
 def hist_subplots(df: pd.DataFrame, columns: int, width: int, height: int) -> None:
@@ -290,36 +411,65 @@ def hist_subplots(df: pd.DataFrame, columns: int, width: int, height: int) -> No
 
     if not isinstance(df, pd.DataFrame) or not isinstance(columns, int) or not isinstance(width, int) or not isinstance(height, int):
         raise TypeError
-
-    features = df.columns
-
-    rows = math.ceil(len(features)/columns)
     
-    titles = [feature for feature in features]
+    if not isinstance(df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
     
-    outter_list = []
-    inner_list = []
+    elif not isinstance(features, list):
+        error_message = "features must be specified as a list of strings"
+        raise TypeError(error_message)
+
+    elif not isinstance(columns, int):
+        error_message = "columns must be specified as an integer number"
+        raise TypeError(error_message)
     
-    for i in range(columns):
-        inner_list.append({"type": "histogram"})
+    elif not isinstance(width, int):
+        error_message = "width must be specified as an integer number"
+        raise TypeError(error_message)
     
-    for i in range(rows):
-        outter_list.append(inner_list)
+    elif not isinstance(height, int):
+        error_message = "height must be specified as an integer number"
+        raise TypeError(error_message)
 
+    else:
+        
+        # names of specified features
+        features = df.columns
 
-    fig = make_subplots(rows=rows, cols=columns, subplot_titles=tuple(titles), specs=outter_list)
+        # rows of the figure are calculated according to the number of specified features and number of columns
+        rows = math.ceil(len(features)/columns)
+        
+        # title for each subplot
+        titles = [feature for feature in features]
+        
+        # data structures for saving the type of each subplot
+        outter_list = []
+        inner_list = []
+        
+        for i in range(columns):
+            inner_list.append({"type": "histogram"})
+        
+        for i in range(rows):
+            outter_list.append(inner_list)
 
-    coordinates = []
-    for i in range(rows):
-        for j in range(columns):
-            coordinates.append([i+1, j+1])
-    
-    for (feature), (coordinate) in zip(features, coordinates):
-        fig.add_trace(go.Histogram(x=df[feature], name=feature), row=coordinate[0], col=coordinate[1])
+        # create figure with subplots
+        fig = make_subplots(rows=rows, cols=columns, subplot_titles=tuple(titles), specs=outter_list)
 
-    fig.update_layout(height=rows*height, width=columns*width, showlegend=True)
+        # create coordinates of each subplot
+        coordinates = []
+        for i in range(rows):
+            for j in range(columns):
+                coordinates.append([i+1, j+1])
+        
+        # add subplots to the figure
+        for (feature), (coordinate) in zip(features, coordinates):
+            fig.add_trace(go.Histogram(x=df[feature], name=feature), row=coordinate[0], col=coordinate[1])
 
-    fig.show()
+        # add figure dimensions and display the legend
+        fig.update_layout(height=rows*height, width=columns*width, showlegend=True)
+
+        fig.show()
 
 ### DISTRIBUTION PLOT FUNCTION ###
 def dist_plot(df: pd.DataFrame, title: str) -> None:
@@ -335,17 +485,28 @@ def dist_plot(df: pd.DataFrame, title: str) -> None:
         None
     '''
 
-    if not isinstance(df, pd.DataFrame) or not isinstance(title, str):
-        raise TypeError
+    if not isinstance(df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
+    
+    elif not isinstance(title, str):
+        error_message = "title must be specified as a string"
+        raise TypeError(error_message)
+    
+    else:
 
-    hist_data = [df[gene] for gene in df.columns]
-    group_labels = [gene for gene in df.columns]
+        # list containing data for each feature
+        hist_data = [df[gene] for gene in df.columns]
 
-    fig = ff.create_distplot(hist_data, group_labels, show_hist=False)
-    fig.update_layout(title_text=title)
-    fig.show()
+        # list containing the name of each feature
+        group_labels = [gene for gene in df.columns]
 
-    return None
+        # create figure
+        fig = ff.create_distplot(hist_data, group_labels, show_hist=False)
+        fig.update_layout(title_text=title)
+        fig.show()
+
+        return None
 
 ### MULTIPLE DISTPLOTS FUNCTION ###
 def dist_subplots(df: pd.DataFrame, columns: int, width: int, height: int) -> None:
@@ -365,47 +526,70 @@ def dist_subplots(df: pd.DataFrame, columns: int, width: int, height: int) -> No
         None
     '''
 
-    if not isinstance(df, pd.DataFrame) or not isinstance(columns, int) or not isinstance(width, int) or not isinstance(height, int):
-        raise TypeError
+    if not isinstance(df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
 
-    features = df.columns
-
-    rows = math.ceil(len(features)/columns)
+    elif not isinstance(columns, int):
+        error_message = "columns must be specified as an integer number"
+        raise TypeError(error_message)
     
-    titles = [feature for feature in features]
+    elif not isinstance(width, int):
+        error_message = "width must be specified as an integer number"
+        raise TypeError(error_message)
     
-    outter_list = []
-    inner_list = []
-    
-    for i in range(columns):
-        inner_list.append({"type": "histogram"})
-    
-    for i in range(rows):
-        outter_list.append(inner_list)
+    elif not isinstance(height, int):
+        error_message = "height must be specified as an integer number"
+        raise TypeError(error_message)
 
+    else:
 
-    fig = make_subplots(rows=rows, cols=columns, subplot_titles=tuple(titles), specs=outter_list)
+        # names of specified features
+        features = df.columns
 
-    hist_data = [df[feature] for feature in features]
-    group_labels = [feature for feature in features]
-    dist_fig = ff.create_distplot(hist_data, group_labels, show_hist=False)
+        # rows of the figure are calculated according to the number of specified features and number of columns
+        rows = math.ceil(len(features)/columns)
+        
+        # title for each subplot
+        titles = [feature for feature in features]
+        
+        # data structures for saving the type of each subplot
+        outter_list = []
+        inner_list = []
+        
+        for i in range(columns):
+            inner_list.append({"type": "histogram"})
+        
+        for i in range(rows):
+            outter_list.append(inner_list)
 
-    coordinates = []
-    for i in range(rows):
-        for j in range(columns):
-            coordinates.append([i+1, j+1])
-    
-    for (coordinate), (trace) in zip(coordinates, dist_fig.select_traces()):
-        fig.add_trace(trace, row=coordinate[0], col=coordinate[1])
+        # create figure with subplots
+        fig = make_subplots(rows=rows, cols=columns, subplot_titles=tuple(titles), specs=outter_list)
 
-    fig.update_layout(height=rows*height, width=columns*width, showlegend=True)
+        # create distribution plots for each feature
+        hist_data = [df[feature] for feature in features]
+        group_labels = [feature for feature in features]
+        dist_fig = ff.create_distplot(hist_data, group_labels, show_hist=False)
 
-    fig.show()
+        # create coordinates of each subplot
+        coordinates = []
+        for i in range(rows):
+            for j in range(columns):
+                coordinates.append([i+1, j+1])
+        
+        # add distribution plots in each subplot on the figure
+        for (coordinate), (trace) in zip(coordinates, dist_fig.select_traces()):
+            fig.add_trace(trace, row=coordinate[0], col=coordinate[1])
 
-    return None
+        # add figure dimensions and display the legend
+        fig.update_layout(height=rows*height, width=columns*width, showlegend=True)
+
+        fig.show()
+
+        return None
 
 ### PCA PLOT FUNCTION ###
-def pca_plot(train_df: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str,) -> None:
+def pca_plot(train_df: pd.DataFrame, continuous:list, target: str,) -> None:
     
     '''
     The function creates the explained cariance Vs principal components plot.
@@ -420,33 +604,50 @@ def pca_plot(train_df: pd.DataFrame, identifier: list, categorical: list, contin
     Returns:
         None
     '''
+    if not isinstance(train_df, pd.DataFrame):
+        error_message = "train_df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
 
-    if not isinstance(train_df, pd.DataFrame) or not isinstance(identifier, list) or not isinstance(categorical, list) or not isinstance(continuous, list) or not isinstance(target, str):
-        raise TypeError
-    
-    X_train = train_df.drop(columns=[target])
+    elif not isinstance(continuous, list):
+        error_message = "continuous must be specified as a list of strings"
+        raise TypeError(error_message)
 
-    X_train_continuous = X_train.loc[:,continuous].values
-    X_train_continuous = np.array(X_train_continuous)
-    
-    standard_scaler = StandardScaler()
-    X_train_continuous_scaled = standard_scaler.fit_transform(X_train_continuous)
+    elif not isinstance(target, str):
+        error_message = "target must be specified as a string"
+        raise TypeError(error_message)
 
-    pca = PCA()
-    pca.fit_transform(X_train_continuous_scaled)
+    else:
         
-    explained_variance = list(np.cumsum(pca.explained_variance_ratio_))
-    explained_variance.insert(0,0)
-    explained_variance = [i * 100 for i in explained_variance]
+        # remove target feature
+        X_train = train_df.drop(columns=[target])
 
-    fig = go.Figure(data=go.Scatter(y=explained_variance))
+        # dataset into a numpy array
+        X_train_continuous = X_train.loc[:,continuous].values
+        X_train_continuous = np.array(X_train_continuous)
+        
+        # scale dataset
+        standard_scaler = StandardScaler()
+        X_train_continuous_scaled = standard_scaler.fit_transform(X_train_continuous)
 
-    fig.update_layout(go.Layout(title='Percentage of Explained Variance per Principal Component',
-                            xaxis=go.layout.XAxis(title='Number of PCs', range=[0, len(pca.components_)]),
-                            yaxis=go.layout.YAxis(title='Explained Variance')
-                            ))
+        # principal component analysis
+        pca = PCA()
+        pca.fit_transform(X_train_continuous_scaled)
+        
+        # explained variance per principal component
+        explained_variance = list(np.cumsum(pca.explained_variance_ratio_))
+        explained_variance.insert(0,0)
+        explained_variance = [i * 100 for i in explained_variance]
 
-    fig.show()
+        # plot of explained variance per principal component
+        fig = go.Figure(data=go.Scatter(y=explained_variance))
+
+        # plot options
+        fig.update_layout(go.Layout(title='Percentage of Explained Variance per Principal Component',
+                                xaxis=go.layout.XAxis(title='Number of PCs', range=[0, len(pca.components_)]),
+                                yaxis=go.layout.YAxis(title='Explained Variance')
+                                ))
+
+        fig.show()
 
 ### DIMENSIONALITY REDUCTION FUNCTION ###
 def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str, method: str) -> pd.DataFrame:
@@ -465,8 +666,35 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
     Returns:
 
     '''
-    if not isinstance(train_df, pd.DataFrame) or not isinstance(test_df, pd.DataFrame) or not isinstance(identifier, list) or not isinstance(categorical, list) or not isinstance(continuous, list) or not isinstance(target, str) or not isinstance(method, str):
-        raise TypeError
+    if not isinstance(train_df, pd.DataFrame):
+        error_message = "train_df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
     
-    return None
+    elif not isinstance(test_df, pd.DataFrame):
+        error_message = "test_df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
+    
+    elif not isinstance(identifier, list):
+        error_message = "identifier must be specified as a list of strings"
+        raise TypeError(error_message)
+
+    elif not isinstance(categorical, list):
+        error_message = "categorical must be specified as a list of strings"
+        raise TypeError(error_message)
+
+    elif not isinstance(continuous, list):
+        error_message = "continuous must be specified as a list of strings"
+        raise TypeError(error_message)
+
+    elif not isinstance(target, str):
+        error_message = "target must be specified as a string"
+        raise TypeError(error_message)
+    
+    elif not isinstance(method, str):
+        error_message = "method must be specified as a string\noptions: pca (PCA), umap (UMAP), tsne (t-SNE)"
+        raise TypeError(error_message)
+    
+    else:
+        return None
+        # if method == "pca":
 
