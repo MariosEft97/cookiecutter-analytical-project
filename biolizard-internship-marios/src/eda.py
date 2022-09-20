@@ -408,16 +408,9 @@ def hist_subplots(df: pd.DataFrame, columns: int, width: int, height: int) -> No
     Returns:
         None
     '''
-
-    if not isinstance(df, pd.DataFrame) or not isinstance(columns, int) or not isinstance(width, int) or not isinstance(height, int):
-        raise TypeError
     
     if not isinstance(df, pd.DataFrame):
         error_message = "df must be specified as a Pandas DataFrame"
-        raise TypeError(error_message)
-    
-    elif not isinstance(features, list):
-        error_message = "features must be specified as a list of strings"
         raise TypeError(error_message)
 
     elif not isinstance(columns, int):
@@ -569,7 +562,7 @@ def dist_subplots(df: pd.DataFrame, columns: int, width: int, height: int) -> No
         # create distribution plots for each feature
         hist_data = [df[feature] for feature in features]
         group_labels = [feature for feature in features]
-        dist_fig = ff.create_distplot(hist_data, group_labels, show_hist=False)
+        dist_fig = ff.create_distplot(hist_data, group_labels, show_hist=False, show_rug=False)
 
         # create coordinates of each subplot
         coordinates = []
@@ -632,7 +625,7 @@ def pca_plot(train_df: pd.DataFrame, continuous:list, target: str,) -> None:
         # principal component analysis
         pca = PCA()
         pca.fit_transform(X_train_continuous_scaled)
-        
+               
         # explained variance per principal component
         explained_variance = list(np.cumsum(pca.explained_variance_ratio_))
         explained_variance.insert(0,0)
@@ -650,7 +643,7 @@ def pca_plot(train_df: pd.DataFrame, continuous:list, target: str,) -> None:
         fig.show()
 
 ### DIMENSIONALITY REDUCTION FUNCTION ###
-def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str, method: str) -> pd.DataFrame:
+def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str, method: str, **kwargs) -> pd.DataFrame:
     
     '''
     The function performs dimensionality reduction techniques on the given data.
@@ -663,7 +656,13 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
         continuous (list): continuous features of the dataset
         target (str): target variable
         method (str): dimensionality reduction method (pca: PCA, umap: UMAP, tsne: t-SNE)
+        
+        PCA kwargs:
+            components (int): number of principal components to retain in the analysis
+    
     Returns:
+        train_df_pca (Pandas DataFrame): data structure with train sample after pca
+        test_df_pca (Pandas DataFrame): data structure with test sample after pca
 
     '''
     if not isinstance(train_df, pd.DataFrame):
@@ -695,6 +694,64 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
         raise TypeError(error_message)
     
     else:
-        return None
-        # if method == "pca":
+        
+        if method == "pca":
+
+            # list of categorical features without target feature
+            categorical_without_target = categorical.copy()
+            categorical_without_target.remove(target)
+
+            ### TRAIN SET PIPELINE ###
+
+            # train set DataFrames for each type of feature (ID, categorical, continuous, target)
+            X_train = train_df.drop(columns=[target])
+            X_train_df_identifier = X_train[identifier].reset_index(drop=True)
+            X_train_df_categorical = X_train[categorical_without_target].reset_index(drop=True)
+            y_train = train_df[target].reset_index(drop=True)
+
+            # train set into a numpy array
+            X_train_continuous = X_train.loc[:,continuous].values
+            X_train_continuous = np.array(X_train_continuous)
+                        
+            # scale train set
+            standard_scaler = StandardScaler()
+            X_train_continuous_scaled = standard_scaler.fit_transform(X_train_continuous)
+            
+            # principal component analysis on train set
+            pca = PCA(n_components=list(kwargs.values())[0])
+            X_train_continuous_tranformed = pca.fit_transform(X_train_continuous_scaled, )
+            
+            # turn into Pandas DataFrame
+            train_pca_labels = ["PC"+str(i+1) for i in range(list(kwargs.values())[0])]
+            X_train_continuous_tranformed_df = pd.DataFrame(X_train_continuous_tranformed, columns=train_pca_labels).reset_index(drop=True)
+            
+            # merge all train DataFrames
+            train_df_pca = pd.concat([X_train_df_identifier, X_train_df_categorical, X_train_continuous_tranformed_df, y_train], axis=1)
+
+            ### TEST SET PIPELINE ###
+            
+            # test set DataFrames for each type of feature (ID, categorical, continuous, target)
+            X_test = test_df.drop(columns=[target])
+            X_test_df_identifier = X_test[identifier].reset_index(drop=True)
+            X_test_df_categorical = X_test[categorical_without_target].reset_index(drop=True)
+            y_test = test_df[target].reset_index(drop=True)
+
+            # test set into a numpy array
+            X_test_continuous = X_test.loc[:,continuous].values
+            X_test_continuous = np.array(X_test_continuous)
+            
+            # scale test set
+            X_test_continuous_scaled = standard_scaler.transform(X_test_continuous)
+            
+            # principal component analysis on train set
+            X_test_continuous_tranformed = pca.transform(X_test_continuous_scaled)
+            
+            # turn into Pandas DataFrame
+            test_pca_labels = ["PC"+str(i+1) for i in range(list(kwargs.values())[0])]
+            X_test_continuous_tranformed_df = pd.DataFrame(X_test_continuous_tranformed, columns=test_pca_labels).reset_index(drop=True)
+
+            # merge all test DataFrames
+            test_df_pca = pd.concat([X_test_df_identifier, X_test_df_categorical, X_test_continuous_tranformed_df, y_test], axis=1)
+
+            return train_df_pca, test_df_pca
 

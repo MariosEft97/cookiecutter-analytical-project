@@ -5,6 +5,7 @@ import warnings
 warnings.filterwarnings('ignore')
 import pandas as pd
 import numpy as np
+import math
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import IsolationForest
 from sklearn.covariance import EllipticEnvelope
@@ -531,7 +532,7 @@ def target_balance_check(train_df: pd.DataFrame, target: str, imbalance_fraction
             print("The tagret feature levels are balanced.")
 
 ### SAMPLER FUNCTION ###
-def sampler(train_df: pd.DataFrame, target: str, method: str, sampling_ratios: dict, random_state: int=None, graphic: bool=False) -> pd.DataFrame:
+def sampler(train_df: pd.DataFrame, target: str, method: str, sampling_ratios: dict, imbalance_fraction: float=0.5, random_state: int=None, graphic: bool=False) -> pd.DataFrame:
     
     """
     The uses under- or over-sampling techniques to create a balanced dataset.
@@ -541,6 +542,7 @@ def sampler(train_df: pd.DataFrame, target: str, method: str, sampling_ratios: d
         target (str): target feature
         method (str): under- or over-sampling technique (under or over)
         sampling_ratios (dict): dictionary containing the desired ratios of the target feature levels when sampling is done (ratios are based on the class with minimum and maximum counts in case of under- and over-sampling respectively)
+        imbalance_fraction (float): fraction of acceptable imbalance between the target feature levels (0-1, default=0.5)
         random_state (int): random state value (default=None)
         graphic (bool): whether results are shown as graphic (True or False, defaul=False)
     
@@ -564,6 +566,10 @@ def sampler(train_df: pd.DataFrame, target: str, method: str, sampling_ratios: d
         error_message = "sampling_ratios must be specified as a dictionary where key=target feature level and value=ratio (float number)"
         raise TypeError(error_message)
     
+    elif not isinstance(imbalance_fraction, float):
+        error_message = "imbalance_fraction must be specified as a float number between 0 and 1"
+        raise TypeError(error_message)
+    
     elif not isinstance(random_state, int):
         error_message = "random_state must be specified as an integer number"
         raise TypeError(error_message)
@@ -578,12 +584,12 @@ def sampler(train_df: pd.DataFrame, target: str, method: str, sampling_ratios: d
         top_count = max(train_df[target].value_counts())
         min_count = min(train_df[target].value_counts())
         total_count = sum(train_df[target].value_counts())
-
+        
         # undersampling technique
         if method == "under":
             undersampling = {}
             for level, ratio in sampling_ratios.items():
-                undersampling.update({level: min_count*ratio})
+                undersampling.update({level: math.ceil(min_count*ratio)})
             rus = RandomUnderSampler(sampling_strategy=undersampling, random_state=random_state)
             X_train_rus, y_train_rus = rus.fit_resample(X_train, y_train)
 
@@ -612,7 +618,7 @@ def sampler(train_df: pd.DataFrame, target: str, method: str, sampling_ratios: d
         elif method == "over":
             oversampling = {}
             for level, ratio in sampling_ratios.items():
-                oversampling.update({level: top_count*ratio})
+                oversampling.update({level: math.ceil(top_count*ratio)})
             ros = RandomOverSampler(sampling_strategy=oversampling, random_state=random_state)
             X_train_ros, y_train_ros = ros.fit_resample(X_train, y_train)
 
