@@ -1,5 +1,6 @@
 # LOAD PACKAGES
 import sys
+from turtle import title
 sys.path.append(r"C:\Users\35799\Desktop\cookiecutter-analytical-project\biolizard-internship-marios\src")
 import pandas as pd
 import numpy as np
@@ -14,7 +15,8 @@ from plotly.subplots import make_subplots
 from ipywidgets import widgets
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-# from scipy.stats import gaussian_kde
+from sklearn.manifold import MDS
+from sklearn.manifold import TSNE
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -581,8 +583,8 @@ def dist_subplots(df: pd.DataFrame, columns: int, width: int, height: int) -> No
 
         return None
 
-### PCA PLOT FUNCTION ###
-def pca_plot(train_df: pd.DataFrame, continuous:list, target: str,) -> None:
+### PCA EXPLAINED VARIANCE PLOT FUNCTION ###
+def pca_variance_plot(train_df: pd.DataFrame, continuous:list, target: str,) -> None:
     
     '''
     The function creates the explained cariance Vs principal components plot.
@@ -643,7 +645,7 @@ def pca_plot(train_df: pd.DataFrame, continuous:list, target: str,) -> None:
         fig.show()
 
 ### DIMENSIONALITY REDUCTION FUNCTION ###
-def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str, method: str, **kwargs) -> pd.DataFrame:
+def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str, method: str, plot_type: str, **kwargs) -> pd.DataFrame:
     
     '''
     The function performs dimensionality reduction techniques on the given data.
@@ -655,14 +657,15 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
         categorical (list): categorical features of the dataset
         continuous (list): continuous features of the dataset
         target (str): target variable
-        method (str): dimensionality reduction method (pca: PCA, umap: UMAP, tsne: t-SNE)
+        method (str): dimensionality reduction method (pca: PCA, mds: MDS, umap: UMAP, tsne: t-SNE)
+        plot_type (str): type of plot to display (2d: 2-dimensional plot  or multi: multi-dimensional plot)
         
-        PCA kwargs:
-            components (int): number of principal components to retain in the analysis
+        **kwargs:
+            components (int): number of components to retain in the analysis
     
     Returns:
-        train_df_pca (Pandas DataFrame): data structure with train sample after pca
-        test_df_pca (Pandas DataFrame): data structure with test sample after pca
+        train_df_reduced (Pandas DataFrame): data structure with train sample after dimensionality reduction
+        test_df_reduced (Pandas DataFrame): data structure with test sample after dimensionality reduction
 
     '''
     if not isinstance(train_df, pd.DataFrame):
@@ -690,68 +693,172 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
         raise TypeError(error_message)
     
     elif not isinstance(method, str):
-        error_message = "method must be specified as a string\noptions: pca (PCA), umap (UMAP), tsne (t-SNE)"
+        error_message = "method must be specified as a string\noptions: pca (PCA), mds (MDS), umap (UMAP), tsne (t-SNE)"
+        raise TypeError(error_message)
+    
+    elif not isinstance(plot_type, str):
+        error_message = "plot_type must be specified as a string\noptions: 2d (2-dimensional plot) or multi (multi-dimensional plot)"
         raise TypeError(error_message)
     
     else:
         
+        # list of categorical features without target feature
+        categorical_without_target = categorical.copy()
+        categorical_without_target.remove(target)
+
+        # train set DataFrames for each type of feature (ID, categorical, continuous, target)
+        X_train = train_df.drop(columns=[target])
+        X_train_df_identifier = X_train[identifier].reset_index(drop=True)
+        X_train_df_categorical = X_train[categorical_without_target].reset_index(drop=True)
+        y_train = train_df[target].reset_index(drop=True)
+
+        # train set into a numpy array
+        X_train_continuous = X_train.loc[:,continuous].values
+        X_train_continuous = np.array(X_train_continuous)
+                    
+        # scale train set
+        standard_scaler = StandardScaler()
+        X_train_continuous_scaled = standard_scaler.fit_transform(X_train_continuous)
+
+        # test set DataFrames for each type of feature (ID, categorical, continuous, target)
+        X_test = test_df.drop(columns=[target])
+        X_test_df_identifier = X_test[identifier].reset_index(drop=True)
+        X_test_df_categorical = X_test[categorical_without_target].reset_index(drop=True)
+        y_test = test_df[target].reset_index(drop=True)
+    
+        # test set into a numpy array
+        X_test_continuous = X_test.loc[:,continuous].values
+        X_test_continuous = np.array(X_test_continuous)
+        
+        # scale test set
+        X_test_continuous_scaled = standard_scaler.transform(X_test_continuous)
+
+        # number of retained components
+        components = list(kwargs.values())[0]
+
         if method == "pca":
-
-            # list of categorical features without target feature
-            categorical_without_target = categorical.copy()
-            categorical_without_target.remove(target)
-
-            ### TRAIN SET PIPELINE ###
-
-            # train set DataFrames for each type of feature (ID, categorical, continuous, target)
-            X_train = train_df.drop(columns=[target])
-            X_train_df_identifier = X_train[identifier].reset_index(drop=True)
-            X_train_df_categorical = X_train[categorical_without_target].reset_index(drop=True)
-            y_train = train_df[target].reset_index(drop=True)
-
-            # train set into a numpy array
-            X_train_continuous = X_train.loc[:,continuous].values
-            X_train_continuous = np.array(X_train_continuous)
-                        
-            # scale train set
-            standard_scaler = StandardScaler()
-            X_train_continuous_scaled = standard_scaler.fit_transform(X_train_continuous)
-            
+           
             # principal component analysis on train set
-            pca = PCA(n_components=list(kwargs.values())[0])
-            X_train_continuous_tranformed = pca.fit_transform(X_train_continuous_scaled, )
+            pca = PCA(n_components=components)
+            X_train_continuous_tranformed = pca.fit_transform(X_train_continuous_scaled)
             
             # turn into Pandas DataFrame
-            train_pca_labels = ["PC"+str(i+1) for i in range(list(kwargs.values())[0])]
+            train_pca_labels = ["PC"+str(i+1) for i in range(components)]
             X_train_continuous_tranformed_df = pd.DataFrame(X_train_continuous_tranformed, columns=train_pca_labels).reset_index(drop=True)
             
             # merge all train DataFrames
             train_df_pca = pd.concat([X_train_df_identifier, X_train_df_categorical, X_train_continuous_tranformed_df, y_train], axis=1)
 
-            ### TEST SET PIPELINE ###
-            
-            # test set DataFrames for each type of feature (ID, categorical, continuous, target)
-            X_test = test_df.drop(columns=[target])
-            X_test_df_identifier = X_test[identifier].reset_index(drop=True)
-            X_test_df_categorical = X_test[categorical_without_target].reset_index(drop=True)
-            y_test = test_df[target].reset_index(drop=True)
+            train_explained_variance = pca.explained_variance_ratio_ * 100
+            total_train_explained_variance = pca.explained_variance_ratio_.sum() * 100
+           
+            if plot_type == "2d":
+                # train 2d pca plot
+                loadings = pca.components_.T * np.sqrt(pca.explained_variance_)
 
-            # test set into a numpy array
-            X_test_continuous = X_test.loc[:,continuous].values
-            X_test_continuous = np.array(X_test_continuous)
+                train_plot_2d = px.scatter(X_train_continuous_tranformed[:, 0:components], x=0, y=1, color=train_df_pca[target], title=f'2D PCA plot\nTotal Explained Variance: {total_train_explained_variance:.2f}%')
+                for i, feature in enumerate(continuous):
+                    train_plot_2d.add_shape(
+                        type='line',
+                        x0=0, y0=0,
+                        x1=loadings[i, 0],
+                        y1=loadings[i, 1]
+                    )
+                    train_plot_2d.add_annotation(
+                        x=loadings[i, 0],
+                        y=loadings[i, 1],
+                        ax=0, ay=0,
+                        xanchor="center",
+                        yanchor="bottom",
+                        text=feature,
+                    )
+                train_plot_2d.show()
             
-            # scale test set
-            X_test_continuous_scaled = standard_scaler.transform(X_test_continuous)
+            # train multiple component plot
+            elif plot_type == "multi":
+                train_plot_labels = {str(i): f"PC {i+1} ({var:.1f}%)" for i, var in enumerate(train_explained_variance)}
+                train_plot_fig = px.scatter_matrix(
+                    X_train_continuous_tranformed,
+                    labels=train_plot_labels,
+                    dimensions=range(len(train_pca_labels)),
+                    color=train_df_pca[target],
+                    title=f'Multi-dimensional PCA plot\nTotal Explained Variance: {total_train_explained_variance:.2f}%')
+                train_plot_fig.update_traces(diagonal_visible=False)
+                train_plot_fig.update_layout(height=components*250, width=components*250)
+                train_plot_fig.show()
             
-            # principal component analysis on train set
+            # principal component analysis on test set
             X_test_continuous_tranformed = pca.transform(X_test_continuous_scaled)
             
             # turn into Pandas DataFrame
-            test_pca_labels = ["PC"+str(i+1) for i in range(list(kwargs.values())[0])]
+            test_pca_labels = ["PC"+str(i+1) for i in range(components)]
             X_test_continuous_tranformed_df = pd.DataFrame(X_test_continuous_tranformed, columns=test_pca_labels).reset_index(drop=True)
 
             # merge all test DataFrames
             test_df_pca = pd.concat([X_test_df_identifier, X_test_df_categorical, X_test_continuous_tranformed_df, y_test], axis=1)
 
+            # # test pca plot
+            # test_explained_variance = pca.explained_variance_ratio_ * 100
+            # total_test_explained_variance = pca.explained_variance_ratio_.sum() * 100
+            # test_plot_labels = {str(i): f"PC {i+1} ({var:.1f}%)" for i, var in enumerate(test_explained_variance)}
+            # test_plot_fig = px.scatter_matrix(
+            #     X_test_continuous_tranformed,
+            #     labels=test_plot_labels,
+            #     dimensions=range(len(test_pca_labels)),
+            #     color=test_df_pca[target],
+            #     title=f'Total Explained Variance (Test set): {total_test_explained_variance:.2f}%')
+            # test_plot_fig.update_traces(diagonal_visible=False)
+            # test_plot_fig.show()
+
             return train_df_pca, test_df_pca
+        
+        elif method == "mds":
+            
+            # multidimensional scaling on train set
+            mds = MDS(n_components=components)
+            X_train_continuous_tranformed = mds.fit_transform(X_train_continuous_scaled)
+
+            # turn into Pandas DataFrame
+            train_mds_labels = ["MD"+str(i+1) for i in range(components)]
+            X_train_continuous_tranformed_df = pd.DataFrame(X_train_continuous_tranformed, columns=train_mds_labels).reset_index(drop=True)
+
+            # merge all train DataFrames
+            train_df_mds = pd.concat([X_train_df_identifier, X_train_df_categorical, X_train_continuous_tranformed_df, y_train], axis=1)
+
+            if plot_type == "2d":
+                # train 2d mds plot
+                train_plot_2d = px.scatter(X_train_continuous_tranformed[:, 0:components], x=0, y=1, color=train_df_mds[target], title=f'2D MDS plot:')
+                train_plot_2d.show()
+            
+            # train multiple mds plot
+            elif plot_type == "multi":
+                # train mds plot
+                train_plot_labels = {str(i): f"MD {i+1}" for i in range(components)}
+                train_plot_fig = px.scatter_matrix(
+                    X_train_continuous_tranformed,
+                    labels=train_plot_labels,
+                    dimensions=range(len(train_mds_labels)),
+                    color=train_df_mds[target],
+                    title=f'Multi-dimensional MDS plot')
+                train_plot_fig.update_traces(diagonal_visible=False)
+                train_plot_fig.update_layout(height=components*250, width=components*250)
+                train_plot_fig.show()
+            
+            # multi-dimensional scaling on test set
+            X_test_continuous_tranformed = mds.transform(X_test_continuous_scaled)
+            
+            # turn into Pandas DataFrame
+            test_mds_labels = ["PC"+str(i+1) for i in range(components)]
+            X_test_continuous_tranformed_df = pd.DataFrame(X_test_continuous_tranformed, columns=test_mds_labels).reset_index(drop=True)
+
+            # merge all test DataFrames
+            test_df_mds = pd.concat([X_test_df_identifier, X_test_df_categorical, X_test_continuous_tranformed_df, y_test], axis=1)
+
+            return train_df_mds, test_df_mds
+
+        elif method == "tsne":
+            return None
+        
+        elif method == "umap":
+            return None
 
