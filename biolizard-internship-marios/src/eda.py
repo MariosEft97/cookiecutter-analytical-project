@@ -199,7 +199,7 @@ def box_plot(df: pd.DataFrame, features: list, stratify_var: str, group_var: str
         feature.observe(response, names="value")
 
         # display widget and figure
-        container = widgets.VBox([feature])
+        container = widgets.HBox([feature])
         display(widgets.VBox([container, g]))
 
 ### MULTIPLE BOXPLOTS FUNCTION ###
@@ -954,12 +954,12 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
             # merge all train DataFrames
             train_df_umap = pd.concat([X_train_df_identifier, X_train_df_categorical, X_train_continuous_tranformed_df, y_train], axis=1)
 
-            # 2-dimensional tsne plot
+            # 2-dimensional umap plot
             if plot_type == "2d":
                 train_plot_2d = px.scatter(X_train_continuous_tranformed[:, 0:2], x=0, y=1, color=train_df_umap[target], title=f'2D UMAP plot (neighbors {neighbors}):')
                 train_plot_2d.show()
             
-            # multi-dimensional tsne plot
+            # multi-dimensional umap plot
             elif plot_type == "multi":
                 
                 train_plot_labels = {str(i): f"UMAP {i+1}" for i in range(components)}
