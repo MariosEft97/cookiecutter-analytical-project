@@ -1,6 +1,5 @@
 # LOAD PACKAGES
 import sys
-from turtle import title
 sys.path.append(r"C:\Users\35799\Desktop\cookiecutter-analytical-project\biolizard-internship-marios\src")
 import pandas as pd
 import numpy as np
@@ -17,6 +16,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.manifold import MDS
 from sklearn.manifold import TSNE
+import umap
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -661,8 +661,11 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
         plot_type (str): type of plot to display (2d: 2-dimensional plot  or multi: multi-dimensional plot)
         
         **kwargs:
-            components (int): number of components to retain in the analysis (applies in pca, mds and tsne)
-            perplexity (float): number of nearest neighbors (5-50, default=30, applies in tsne)
+            components (int): number of components to retain in the analysis (applies in PCA, MDS, t-SNE and UMAP)
+            perplexity (float): number of nearest neighbors (5-50, default=30, applies in t-SNE)
+            neighbors (int): controls how UMAP balances local versus global structure in the data (low/high values favor local/global structure, default=15)
+            min_distance (float): controls how tightly UMAP is allowed to pack points together (0-0.99, default=0.1)
+            metric (str): controls how distance is computed in UMAP (euclidean, manhattan, chebyshev, minkowski, mahalanobis, cosine, correlation)
     
     Returns:
         train_df_reduced (Pandas DataFrame): data structure with train sample after dimensionality reduction
@@ -933,5 +936,56 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
             return train_df_tsne, test_df_tsne
         
         elif method == "umap":
-            return None
+            
+            # define umap hyperpamaters
+            components = int(list(kwargs.values())[0])
+            neighbors = int(list(kwargs.values())[1])
+            min_distance = float(list(kwargs.values())[2])
+            metric = str(list(kwargs.values())[3])
+
+            # UMAP on train set
+            reducer = umap.UMAP(n_components=components, n_neighbors=neighbors, min_dist=min_distance, metric=metric)
+            X_train_continuous_tranformed = reducer.fit_transform(X_train_continuous_scaled)
+
+            # turn into Pandas DataFrame
+            train_labels = ["UMAP"+str(i+1) for i in range(components)]
+            X_train_continuous_tranformed_df = pd.DataFrame(X_train_continuous_tranformed, columns=train_labels).reset_index(drop=True)
+
+            # merge all train DataFrames
+            train_df_umap = pd.concat([X_train_df_identifier, X_train_df_categorical, X_train_continuous_tranformed_df, y_train], axis=1)
+
+            # 2-dimensional tsne plot
+            if plot_type == "2d":
+                train_plot_2d = px.scatter(X_train_continuous_tranformed[:, 0:2], x=0, y=1, color=train_df_umap[target], title=f'2D UMAP plot (neighbors {neighbors}):')
+                train_plot_2d.show()
+            
+            # multi-dimensional tsne plot
+            elif plot_type == "multi":
+                
+                train_plot_labels = {str(i): f"UMAP {i+1}" for i in range(components)}
+                
+                train_plot_fig = px.scatter_matrix(
+                    X_train_continuous_tranformed,
+                    labels=train_plot_labels,
+                    dimensions=range(len(train_labels)),
+                    color=train_df_umap[target],
+                    title=f'Multi-dimensional UMAP plot (neighbors {neighbors}):')
+                
+                train_plot_fig.update_traces(diagonal_visible=False)
+                
+                train_plot_fig.update_layout(height=components*250, width=components*250)
+                
+                train_plot_fig.show()
+            
+            # tsne on test set
+            X_test_continuous_tranformed = reducer.transform(X_test_continuous_scaled)
+            
+            # turn into Pandas DataFrame
+            test_labels = ["UMAP"+str(i+1) for i in range(components)]
+            X_test_continuous_tranformed_df = pd.DataFrame(X_test_continuous_tranformed, columns=test_labels).reset_index(drop=True)
+
+            # merge all test DataFrames
+            test_df_umap = pd.concat([X_test_df_identifier, X_test_df_categorical, X_test_continuous_tranformed_df, y_test], axis=1)
+
+            return train_df_umap, test_df_umap
 
