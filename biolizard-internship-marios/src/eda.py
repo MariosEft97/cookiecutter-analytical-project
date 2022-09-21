@@ -661,7 +661,8 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
         plot_type (str): type of plot to display (2d: 2-dimensional plot  or multi: multi-dimensional plot)
         
         **kwargs:
-            components (int): number of components to retain in the analysis
+            components (int): number of components to retain in the analysis (applies in pca, mds and tsne)
+            perplexity (float): number of nearest neighbors (5-50, default=30, applies in tsne)
     
     Returns:
         train_df_reduced (Pandas DataFrame): data structure with train sample after dimensionality reduction
@@ -743,20 +744,34 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
             X_train_continuous_tranformed = pca.fit_transform(X_train_continuous_scaled)
             
             # turn into Pandas DataFrame
-            train_pca_labels = ["PC"+str(i+1) for i in range(components)]
-            X_train_continuous_tranformed_df = pd.DataFrame(X_train_continuous_tranformed, columns=train_pca_labels).reset_index(drop=True)
+            train_labels = ["PC"+str(i+1) for i in range(components)]
+            X_train_continuous_tranformed_df = pd.DataFrame(X_train_continuous_tranformed, columns=train_labels).reset_index(drop=True)
             
             # merge all train DataFrames
             train_df_pca = pd.concat([X_train_df_identifier, X_train_df_categorical, X_train_continuous_tranformed_df, y_train], axis=1)
 
+            # calculate explained variance per component and total explained variance
             train_explained_variance = pca.explained_variance_ratio_ * 100
             total_train_explained_variance = pca.explained_variance_ratio_.sum() * 100
-           
+
+            # 2-dimensional pca plot
             if plot_type == "2d":
-                # train 2d pca plot
+               
+                # compute loadings
                 loadings = pca.components_.T * np.sqrt(pca.explained_variance_)
 
-                train_plot_2d = px.scatter(X_train_continuous_tranformed[:, 0:components], x=0, y=1, color=train_df_pca[target], title=f'2D PCA plot\nTotal Explained Variance: {total_train_explained_variance:.2f}%')
+                # number of loading to display
+                # loadings_number = list(kwargs.values())[1]
+
+                # calculate explained variance per component and total explained variance
+                train_explained_variance = pca.explained_variance_ratio_ * 100
+                total_train_explained_variance = pca.explained_variance_ratio_[0:2].sum() * 100
+
+                train_plot_2d = px.scatter(
+                    X_train_continuous_tranformed[:, 0:2], x=0, y=1,
+                    color=train_df_pca[target],
+                    title=f'2D PCA plot (Total Explained Variance: {total_train_explained_variance:.2f}%)')
+                
                 for i, feature in enumerate(continuous):
                     train_plot_2d.add_shape(
                         type='line',
@@ -770,29 +785,35 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
                         ax=0, ay=0,
                         xanchor="center",
                         yanchor="bottom",
-                        text=feature,
+                        text=feature
                     )
+                
                 train_plot_2d.show()
             
-            # train multiple component plot
+            # multi-dimensional component plot
             elif plot_type == "multi":
+                
                 train_plot_labels = {str(i): f"PC {i+1} ({var:.1f}%)" for i, var in enumerate(train_explained_variance)}
+                
                 train_plot_fig = px.scatter_matrix(
                     X_train_continuous_tranformed,
                     labels=train_plot_labels,
-                    dimensions=range(len(train_pca_labels)),
+                    dimensions=range(len(train_labels)),
                     color=train_df_pca[target],
-                    title=f'Multi-dimensional PCA plot\nTotal Explained Variance: {total_train_explained_variance:.2f}%')
+                    title=f'Multi-dimensional PCA plot (Total Explained Variance: {total_train_explained_variance:.2f}%)')
+                
                 train_plot_fig.update_traces(diagonal_visible=False)
+                
                 train_plot_fig.update_layout(height=components*250, width=components*250)
+                
                 train_plot_fig.show()
             
             # principal component analysis on test set
             X_test_continuous_tranformed = pca.transform(X_test_continuous_scaled)
             
             # turn into Pandas DataFrame
-            test_pca_labels = ["PC"+str(i+1) for i in range(components)]
-            X_test_continuous_tranformed_df = pd.DataFrame(X_test_continuous_tranformed, columns=test_pca_labels).reset_index(drop=True)
+            test_labels = ["PC"+str(i+1) for i in range(components)]
+            X_test_continuous_tranformed_df = pd.DataFrame(X_test_continuous_tranformed, columns=test_labels).reset_index(drop=True)
 
             # merge all test DataFrames
             test_df_pca = pd.concat([X_test_df_identifier, X_test_df_categorical, X_test_continuous_tranformed_df, y_test], axis=1)
@@ -804,7 +825,7 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
             # test_plot_fig = px.scatter_matrix(
             #     X_test_continuous_tranformed,
             #     labels=test_plot_labels,
-            #     dimensions=range(len(test_pca_labels)),
+            #     dimensions=range(len(test_labels)),
             #     color=test_df_pca[target],
             #     title=f'Total Explained Variance (Test set): {total_test_explained_variance:.2f}%')
             # test_plot_fig.update_traces(diagonal_visible=False)
@@ -819,37 +840,41 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
             X_train_continuous_tranformed = mds.fit_transform(X_train_continuous_scaled)
 
             # turn into Pandas DataFrame
-            train_mds_labels = ["MD"+str(i+1) for i in range(components)]
-            X_train_continuous_tranformed_df = pd.DataFrame(X_train_continuous_tranformed, columns=train_mds_labels).reset_index(drop=True)
+            train_labels = ["MD"+str(i+1) for i in range(components)]
+            X_train_continuous_tranformed_df = pd.DataFrame(X_train_continuous_tranformed, columns=train_labels).reset_index(drop=True)
 
             # merge all train DataFrames
             train_df_mds = pd.concat([X_train_df_identifier, X_train_df_categorical, X_train_continuous_tranformed_df, y_train], axis=1)
 
+            # 2-dimensional mds plot
             if plot_type == "2d":
-                # train 2d mds plot
-                train_plot_2d = px.scatter(X_train_continuous_tranformed[:, 0:components], x=0, y=1, color=train_df_mds[target], title=f'2D MDS plot:')
+                train_plot_2d = px.scatter(X_train_continuous_tranformed[:, 0:2], x=0, y=1, color=train_df_mds[target], title=f'2D MDS plot:')
                 train_plot_2d.show()
             
-            # train multiple mds plot
+            # multi-dimensional mds plot
             elif plot_type == "multi":
-                # train mds plot
+                
                 train_plot_labels = {str(i): f"MD {i+1}" for i in range(components)}
+                
                 train_plot_fig = px.scatter_matrix(
                     X_train_continuous_tranformed,
                     labels=train_plot_labels,
-                    dimensions=range(len(train_mds_labels)),
+                    dimensions=range(len(train_labels)),
                     color=train_df_mds[target],
                     title=f'Multi-dimensional MDS plot')
+                
                 train_plot_fig.update_traces(diagonal_visible=False)
+                
                 train_plot_fig.update_layout(height=components*250, width=components*250)
+                
                 train_plot_fig.show()
             
             # multi-dimensional scaling on test set
-            X_test_continuous_tranformed = mds.transform(X_test_continuous_scaled)
+            X_test_continuous_tranformed = mds.fit_transform(X_test_continuous_scaled)
             
             # turn into Pandas DataFrame
-            test_mds_labels = ["PC"+str(i+1) for i in range(components)]
-            X_test_continuous_tranformed_df = pd.DataFrame(X_test_continuous_tranformed, columns=test_mds_labels).reset_index(drop=True)
+            test_labels = ["MD"+str(i+1) for i in range(components)]
+            X_test_continuous_tranformed_df = pd.DataFrame(X_test_continuous_tranformed, columns=test_labels).reset_index(drop=True)
 
             # merge all test DataFrames
             test_df_mds = pd.concat([X_test_df_identifier, X_test_df_categorical, X_test_continuous_tranformed_df, y_test], axis=1)
@@ -857,7 +882,55 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
             return train_df_mds, test_df_mds
 
         elif method == "tsne":
-            return None
+
+            # define perplexity value
+            perplexity = float(list(kwargs.values())[1])
+
+            # t-SNE on train set
+            tsne = TSNE(n_components=components, perplexity=perplexity)
+            X_train_continuous_tranformed = tsne.fit_transform(X_train_continuous_scaled)
+
+            # turn into Pandas DataFrame
+            train_labels = ["SNE"+str(i+1) for i in range(components)]
+            X_train_continuous_tranformed_df = pd.DataFrame(X_train_continuous_tranformed, columns=train_labels).reset_index(drop=True)
+
+            # merge all train DataFrames
+            train_df_tsne = pd.concat([X_train_df_identifier, X_train_df_categorical, X_train_continuous_tranformed_df, y_train], axis=1)
+
+            # 2-dimensional tsne plot
+            if plot_type == "2d":
+                train_plot_2d = px.scatter(X_train_continuous_tranformed[:, 0:2], x=0, y=1, color=train_df_tsne[target], title=f'2D t-SNE plot (perplexity {perplexity}):')
+                train_plot_2d.show()
+            
+            # multi-dimensional tsne plot
+            elif plot_type == "multi":
+                
+                train_plot_labels = {str(i): f"SNE {i+1}" for i in range(components)}
+                
+                train_plot_fig = px.scatter_matrix(
+                    X_train_continuous_tranformed,
+                    labels=train_plot_labels,
+                    dimensions=range(len(train_labels)),
+                    color=train_df_tsne[target],
+                    title=f'Multi-dimensional t-SNE plot (perplexity {perplexity}):')
+                
+                train_plot_fig.update_traces(diagonal_visible=False)
+                
+                train_plot_fig.update_layout(height=components*250, width=components*250)
+                
+                train_plot_fig.show()
+            
+            # tsne on test set
+            X_test_continuous_tranformed = tsne.fit_transform(X_test_continuous_scaled)
+            
+            # turn into Pandas DataFrame
+            test_labels = ["SNE"+str(i+1) for i in range(components)]
+            X_test_continuous_tranformed_df = pd.DataFrame(X_test_continuous_tranformed, columns=test_labels).reset_index(drop=True)
+
+            # merge all test DataFrames
+            test_df_tsne = pd.concat([X_test_df_identifier, X_test_df_categorical, X_test_continuous_tranformed_df, y_test], axis=1)
+
+            return train_df_tsne, test_df_tsne
         
         elif method == "umap":
             return None
