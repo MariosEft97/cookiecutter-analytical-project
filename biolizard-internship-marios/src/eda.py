@@ -17,6 +17,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.manifold import MDS
 from sklearn.manifold import TSNE
 import umap
+from sklearn.preprocessing import LabelBinarizer
+from sklearn.preprocessing import OneHotEncoder
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -584,10 +586,10 @@ def dist_subplots(df: pd.DataFrame, columns: int, width: int, height: int) -> No
         return None
 
 ### PCA EXPLAINED VARIANCE PLOT FUNCTION ###
-def pca_variance_plot(train_df: pd.DataFrame, continuous:list, target: str,) -> None:
+def pca_variance_plot(train_df: pd.DataFrame, identifier: list, categorical: list, continuous:list, target: str,) -> None:
     
     '''
-    The function creates the explained cariance Vs principal components plot.
+    The function creates the explained variance Vs principal components plot.
     
     Parameters:
         train_df (Pandas DataFrame): data structure with train sample
@@ -602,6 +604,14 @@ def pca_variance_plot(train_df: pd.DataFrame, continuous:list, target: str,) -> 
     if not isinstance(train_df, pd.DataFrame):
         error_message = "train_df must be specified as a Pandas DataFrame"
         raise TypeError(error_message)
+    
+    elif not isinstance(identifier, list):
+        error_message = "identifier must be specified as a list of strings"
+        raise TypeError(error_message)
+    
+    elif not isinstance(categorical, list):
+        error_message = "categorical must be specified as a list of strings"
+        raise TypeError(error_message)
 
     elif not isinstance(continuous, list):
         error_message = "continuous must be specified as a list of strings"
@@ -613,11 +623,36 @@ def pca_variance_plot(train_df: pd.DataFrame, continuous:list, target: str,) -> 
 
     else:
         
-        # remove target feature
-        X_train = train_df.drop(columns=[target])
+        # list of categorical features without target feature
+        categorical_without_target = categorical.copy()
+        categorical_without_target.remove(target)
+
+        # remove target and ID feature
+        X_train = train_df.drop(columns=[target, identifier[0]])
+
+        binary_encoded_features = []
+        onehot_encoded_features = []
+
+        # encode categorical features
+        for feature in categorical_without_target:
+            if len(X_train[feature].unique()) == 2:
+                lb = LabelBinarizer()
+                encoded_feature = lb.fit_transform(X_train[feature])
+                encoded_feature_df = pd.DataFrame(encoded_feature, columns=[feature])
+                binary_encoded_features.append(encoded_feature_df)
+            elif len(X_train[feature].unique()) > 2:
+                ohe = OneHotEncoder()
+                encoded_feature = ohe.fit_transform(X_train[[feature]]).toarray()
+                encoded_feature_df = pd.DataFrame(encoded_feature, columns = [feature+"_"+X_train[feature].unique()[i] for i in range(len(X_train[feature].unique()))])
+                onehot_encoded_features.append(encoded_feature_df)
+
+        X_train = X_train.drop(columns=categorical_without_target)
+        binary_encoded_features_df = pd.concat(binary_encoded_features, axis=1)
+        onehot_encoded_features_df = pd.concat(onehot_encoded_features, axis=1)
+        X_train = pd.concat([binary_encoded_features_df.reset_index(drop=True), onehot_encoded_features_df.reset_index(drop=True), X_train.reset_index(drop=True)], axis=1)
 
         # dataset into a numpy array
-        X_train_continuous = X_train.loc[:,continuous].values
+        X_train_continuous = X_train.values
         X_train_continuous = np.array(X_train_continuous)
         
         # scale dataset
@@ -658,7 +693,7 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
         continuous (list): continuous features of the dataset
         target (str): target variable
         method (str): dimensionality reduction method (pca: PCA, mds: MDS, umap: UMAP, tsne: t-SNE)
-        plot_type (str): type of plot to display (2d: 2-dimensional plot  or multi: multi-dimensional plot)
+        plot_type (str): type of plot to display (2d: 2-dimensional plot, 3d: 3-dimensional plot, multi: multi-dimensional plot)
         
         **kwargs:
             components (int): number of components to retain in the analysis (applies in PCA, MDS, t-SNE and UMAP)
@@ -701,39 +736,81 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
         raise TypeError(error_message)
     
     elif not isinstance(plot_type, str):
-        error_message = "plot_type must be specified as a string\noptions: 2d (2-dimensional plot) or multi (multi-dimensional plot)"
+        error_message = "plot_type must be specified as a string\noptions: 2d (2-dimensional plot) 3d (3-dimensional plot) or multi (multi-dimensional plot)"
         raise TypeError(error_message)
     
     else:
-        
+
         # list of categorical features without target feature
         categorical_without_target = categorical.copy()
         categorical_without_target.remove(target)
 
         # train set DataFrames for each type of feature (ID, categorical, continuous, target)
-        X_train = train_df.drop(columns=[target])
-        X_train_df_identifier = X_train[identifier].reset_index(drop=True)
-        X_train_df_categorical = X_train[categorical_without_target].reset_index(drop=True)
+        X_train = train_df.drop(columns=[target, identifier[0]])
+        X_train_df_identifier = train_df[identifier].reset_index(drop=True)
+        X_train_df_categorical = train_df[categorical_without_target].reset_index(drop=True)
         y_train = train_df[target].reset_index(drop=True)
 
-        # train set into a numpy array
-        X_train_continuous = X_train.loc[:,continuous].values
+        train_binary_encoded_features = []
+        train_onehot_encoded_features = []
+
+        # encode categorical features of train set
+        for feature in categorical_without_target:
+            if len(X_train[feature].unique()) == 2:
+                lb = LabelBinarizer()
+                encoded_feature = lb.fit_transform(X_train[feature])
+                encoded_feature_df = pd.DataFrame(encoded_feature, columns=[feature])
+                train_binary_encoded_features.append(encoded_feature_df)
+            elif len(X_train[feature].unique()) > 2:
+                ohe = OneHotEncoder()
+                encoded_feature = ohe.fit_transform(X_train[[feature]]).toarray()
+                encoded_feature_df = pd.DataFrame(encoded_feature, columns = [feature+"_"+X_train[feature].unique()[i] for i in range(len(X_train[feature].unique()))])
+                train_onehot_encoded_features.append(encoded_feature_df)
+
+        X_train = X_train.drop(columns=categorical_without_target)
+        train_binary_encoded_features_df = pd.concat(train_binary_encoded_features, axis=1)
+        train_onehot_encoded_features_df = pd.concat(train_onehot_encoded_features, axis=1)
+        X_train = pd.concat([train_binary_encoded_features_df.reset_index(drop=True), train_onehot_encoded_features_df.reset_index(drop=True), X_train.reset_index(drop=True)], axis=1)
+
+        # dataset into a numpy array
+        X_train_continuous = X_train.values
         X_train_continuous = np.array(X_train_continuous)
-                    
+      
         # scale train set
         standard_scaler = StandardScaler()
         X_train_continuous_scaled = standard_scaler.fit_transform(X_train_continuous)
 
         # test set DataFrames for each type of feature (ID, categorical, continuous, target)
-        X_test = test_df.drop(columns=[target])
-        X_test_df_identifier = X_test[identifier].reset_index(drop=True)
-        X_test_df_categorical = X_test[categorical_without_target].reset_index(drop=True)
+        X_test = test_df.drop(columns=[target, identifier[0]])
+        X_test_df_identifier = test_df[identifier].reset_index(drop=True)
+        X_test_df_categorical = test_df[categorical_without_target].reset_index(drop=True)
         y_test = test_df[target].reset_index(drop=True)
+
+        test_binary_encoded_features = []
+        test_onehot_encoded_features = []
+
+        # encode categorical features of test set
+        for feature in categorical_without_target:
+            if len(X_test[feature].unique()) == 2:
+                lb = LabelBinarizer()
+                encoded_feature = lb.fit_transform(X_test[feature])
+                encoded_feature_df = pd.DataFrame(encoded_feature, columns=[feature])
+                test_binary_encoded_features.append(encoded_feature_df)
+            elif len(X_test[feature].unique()) > 2:
+                ohe = OneHotEncoder()
+                encoded_feature = ohe.fit_transform(X_test[[feature]]).toarray()
+                encoded_feature_df = pd.DataFrame(encoded_feature, columns = [feature+"_"+X_test[feature].unique()[i] for i in range(len(X_test[feature].unique()))])
+                test_onehot_encoded_features.append(encoded_feature_df)
+
+        X_test = X_test.drop(columns=categorical_without_target)
+        test_binary_encoded_features_df = pd.concat(test_binary_encoded_features, axis=1)
+        test_onehot_encoded_features_df = pd.concat(test_onehot_encoded_features, axis=1)
+        X_test = pd.concat([test_binary_encoded_features_df.reset_index(drop=True), test_onehot_encoded_features_df.reset_index(drop=True), X_test.reset_index(drop=True)], axis=1)
     
         # test set into a numpy array
-        X_test_continuous = X_test.loc[:,continuous].values
+        X_test_continuous = X_test.values
         X_test_continuous = np.array(X_test_continuous)
-        
+    
         # scale test set
         X_test_continuous_scaled = standard_scaler.transform(X_test_continuous)
 
@@ -751,7 +828,7 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
             X_train_continuous_tranformed_df = pd.DataFrame(X_train_continuous_tranformed, columns=train_labels).reset_index(drop=True)
             
             # merge all train DataFrames
-            train_df_pca = pd.concat([X_train_df_identifier, X_train_df_categorical, X_train_continuous_tranformed_df, y_train], axis=1)
+            train_df_pca = pd.concat([X_train_df_identifier, X_train_continuous_tranformed_df, y_train], axis=1)
 
             # calculate explained variance per component and total explained variance
             train_explained_variance = pca.explained_variance_ratio_ * 100
@@ -762,6 +839,7 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
                
                 # compute loadings
                 loadings = pca.components_.T * np.sqrt(pca.explained_variance_)
+                # loadings_labels = train_df.drop(columns=[target, identifier[0]]).columns
 
                 # number of loading to display
                 # loadings_number = list(kwargs.values())[1]
@@ -775,25 +853,40 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
                     color=train_df_pca[target],
                     title=f'2D PCA plot (Total Explained Variance: {total_train_explained_variance:.2f}%)')
                 
-                for i, feature in enumerate(continuous):
-                    train_plot_2d.add_shape(
-                        type='line',
-                        x0=0, y0=0,
-                        x1=loadings[i, 0],
-                        y1=loadings[i, 1]
-                    )
-                    train_plot_2d.add_annotation(
-                        x=loadings[i, 0],
-                        y=loadings[i, 1],
-                        ax=0, ay=0,
-                        xanchor="center",
-                        yanchor="bottom",
-                        text=feature
-                    )
+                # for i, feature in enumerate(continuous):
+                #     train_plot_2d.add_shape(
+                #         type='line',
+                #         x0=0, y0=0,
+                #         x1=loadings[i, 0],
+                #         y1=loadings[i, 1]
+                #     )
+                #     train_plot_2d.add_annotation(
+                #         x=loadings[i, 0],
+                #         y=loadings[i, 1],
+                #         ax=0, ay=0,
+                #         xanchor="center",
+                #         yanchor="bottom",
+                #         text=feature
+                #     )
                 
                 train_plot_2d.show()
             
-            # multi-dimensional component plot
+            elif plot_type == "3d":
+
+                # 3-dimensional pca plot
+                # calculate explained variance per component and total explained variance
+                train_explained_variance = pca.explained_variance_ratio_ * 100
+                total_train_explained_variance = pca.explained_variance_ratio_[0:3].sum() * 100
+
+                train_plot_3d = px.scatter_3d(
+                    X_train_continuous_tranformed[:, 0:3], x=0, y=1, z=2,
+                    color=train_df_pca[target],
+                    title=f'3D PCA plot (Total Explained Variance: {total_train_explained_variance:.2f}%)',
+                    labels={'0': 'PC1', '1': 'PC2', '2': 'PC3'})
+                
+                train_plot_3d.show()
+            
+            # multi-dimensional pca plot
             elif plot_type == "multi":
                 
                 train_plot_labels = {str(i): f"PC {i+1} ({var:.1f}%)" for i, var in enumerate(train_explained_variance)}
@@ -819,20 +912,7 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
             X_test_continuous_tranformed_df = pd.DataFrame(X_test_continuous_tranformed, columns=test_labels).reset_index(drop=True)
 
             # merge all test DataFrames
-            test_df_pca = pd.concat([X_test_df_identifier, X_test_df_categorical, X_test_continuous_tranformed_df, y_test], axis=1)
-
-            # # test pca plot
-            # test_explained_variance = pca.explained_variance_ratio_ * 100
-            # total_test_explained_variance = pca.explained_variance_ratio_.sum() * 100
-            # test_plot_labels = {str(i): f"PC {i+1} ({var:.1f}%)" for i, var in enumerate(test_explained_variance)}
-            # test_plot_fig = px.scatter_matrix(
-            #     X_test_continuous_tranformed,
-            #     labels=test_plot_labels,
-            #     dimensions=range(len(test_labels)),
-            #     color=test_df_pca[target],
-            #     title=f'Total Explained Variance (Test set): {total_test_explained_variance:.2f}%')
-            # test_plot_fig.update_traces(diagonal_visible=False)
-            # test_plot_fig.show()
+            test_df_pca = pd.concat([X_test_df_identifier, X_test_continuous_tranformed_df, y_test], axis=1)
 
             return train_df_pca, test_df_pca
         
@@ -847,12 +927,24 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
             X_train_continuous_tranformed_df = pd.DataFrame(X_train_continuous_tranformed, columns=train_labels).reset_index(drop=True)
 
             # merge all train DataFrames
-            train_df_mds = pd.concat([X_train_df_identifier, X_train_df_categorical, X_train_continuous_tranformed_df, y_train], axis=1)
+            train_df_mds = pd.concat([X_train_df_identifier, X_train_continuous_tranformed_df, y_train], axis=1)
 
             # 2-dimensional mds plot
             if plot_type == "2d":
                 train_plot_2d = px.scatter(X_train_continuous_tranformed[:, 0:2], x=0, y=1, color=train_df_mds[target], title=f'2D MDS plot:')
                 train_plot_2d.show()
+            
+            elif plot_type == "3d":
+                
+                # 3-dimensional mds plot
+                
+                train_plot_3d = px.scatter_3d(
+                    X_train_continuous_tranformed[:, 0:3], x=0, y=1, z=2,
+                    color=train_df_mds[target],
+                    title=f'3D MDS plot:',
+                    labels={'0': 'MD1', '1': 'MD2', '2': 'MD3'})
+                
+                train_plot_3d.show()
             
             # multi-dimensional mds plot
             elif plot_type == "multi":
@@ -880,7 +972,7 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
             X_test_continuous_tranformed_df = pd.DataFrame(X_test_continuous_tranformed, columns=test_labels).reset_index(drop=True)
 
             # merge all test DataFrames
-            test_df_mds = pd.concat([X_test_df_identifier, X_test_df_categorical, X_test_continuous_tranformed_df, y_test], axis=1)
+            test_df_mds = pd.concat([X_test_df_identifier, X_test_continuous_tranformed_df, y_test], axis=1)
 
             return train_df_mds, test_df_mds
 
@@ -898,12 +990,24 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
             X_train_continuous_tranformed_df = pd.DataFrame(X_train_continuous_tranformed, columns=train_labels).reset_index(drop=True)
 
             # merge all train DataFrames
-            train_df_tsne = pd.concat([X_train_df_identifier, X_train_df_categorical, X_train_continuous_tranformed_df, y_train], axis=1)
+            train_df_tsne = pd.concat([X_train_df_identifier, X_train_continuous_tranformed_df, y_train], axis=1)
 
             # 2-dimensional tsne plot
             if plot_type == "2d":
                 train_plot_2d = px.scatter(X_train_continuous_tranformed[:, 0:2], x=0, y=1, color=train_df_tsne[target], title=f'2D t-SNE plot (perplexity {perplexity}):')
                 train_plot_2d.show()
+            
+            elif plot_type == "3d":
+                
+                # 3-dimensional tsne plot
+                
+                train_plot_3d = px.scatter_3d(
+                    X_train_continuous_tranformed[:, 0:3], x=0, y=1, z=2,
+                    color=train_df_tsne[target],
+                    title=f'3D t-SNE plot (perplexity {perplexity}):',
+                    labels={'0': 'SNE1', '1': 'SNE2', '2': 'SNE3'})
+                
+                train_plot_3d.show()
             
             # multi-dimensional tsne plot
             elif plot_type == "multi":
@@ -931,7 +1035,7 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
             X_test_continuous_tranformed_df = pd.DataFrame(X_test_continuous_tranformed, columns=test_labels).reset_index(drop=True)
 
             # merge all test DataFrames
-            test_df_tsne = pd.concat([X_test_df_identifier, X_test_df_categorical, X_test_continuous_tranformed_df, y_test], axis=1)
+            test_df_tsne = pd.concat([X_test_df_identifier, X_test_continuous_tranformed_df, y_test], axis=1)
 
             return train_df_tsne, test_df_tsne
         
@@ -952,12 +1056,24 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
             X_train_continuous_tranformed_df = pd.DataFrame(X_train_continuous_tranformed, columns=train_labels).reset_index(drop=True)
 
             # merge all train DataFrames
-            train_df_umap = pd.concat([X_train_df_identifier, X_train_df_categorical, X_train_continuous_tranformed_df, y_train], axis=1)
+            train_df_umap = pd.concat([X_train_df_identifier, X_train_continuous_tranformed_df, y_train], axis=1)
 
             # 2-dimensional umap plot
             if plot_type == "2d":
                 train_plot_2d = px.scatter(X_train_continuous_tranformed[:, 0:2], x=0, y=1, color=train_df_umap[target], title=f'2D UMAP plot (neighbors {neighbors}):')
                 train_plot_2d.show()
+            
+            elif plot_type == "3d":
+                
+                # 3-dimensional umap plot
+                
+                train_plot_3d = px.scatter_3d(
+                    X_train_continuous_tranformed[:, 0:3], x=0, y=1, z=2,
+                    color=train_df_umap[target],
+                    title=f'3D UMAP plot (neighbors {neighbors}):',
+                    labels={'0': 'UMAP1', '1': 'UMAP2', '2': 'UMAP3'})
+                
+                train_plot_3d.show()
             
             # multi-dimensional umap plot
             elif plot_type == "multi":
@@ -985,7 +1101,34 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
             X_test_continuous_tranformed_df = pd.DataFrame(X_test_continuous_tranformed, columns=test_labels).reset_index(drop=True)
 
             # merge all test DataFrames
-            test_df_umap = pd.concat([X_test_df_identifier, X_test_df_categorical, X_test_continuous_tranformed_df, y_test], axis=1)
+            test_df_umap = pd.concat([X_test_df_identifier, X_test_continuous_tranformed_df, y_test], axis=1)
 
             return train_df_umap, test_df_umap
 
+### CLUSTERING FUNCTION ###
+def clustering(df: pd.DataFrame, categorical: list, method: str) -> pd.DataFrame:
+    
+    '''
+    The function performs clustering on the given data.
+
+    Parameters:
+        df (Pandas DataFrame): data structure with loaded data
+        categorical (list): categorical features of the dataset
+        method (str): clustering algorithm (kmeans, hierarchical, dbscan)
+    
+    Returns:
+        cluster_df (pd.DataFrame): data structure with loaded data
+
+    '''
+
+    if not isinstance(df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
+    
+    elif not isinstance(categorical, list):
+        error_message = "categorical must be specified as a list of strings"
+        raise TypeError(error_message)
+    
+    elif not isinstance(method, str):
+        error_message = "method must be specified as a string\noptions: kmeans, hierarchical or dbscan"
+        raise TypeError(error_message)
