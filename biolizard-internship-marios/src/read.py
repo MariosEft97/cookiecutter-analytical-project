@@ -192,7 +192,7 @@ def data_info(df: pd.DataFrame, threshold: int=20) -> list:
         print(100*"-")
 
         if df.duplicated().sum() == 0:
-            print("There are now duplicate entries in the dataset.")
+            print("There are no duplicate entries in the dataset.")
         elif df.duplicated().sum() > 0:
             print("There following entries are duplicated.")
             print(print(df[df.duplicated()==True]))

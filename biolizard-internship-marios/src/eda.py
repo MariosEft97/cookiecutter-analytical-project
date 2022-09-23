@@ -847,13 +847,12 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
                 # loadings_number = list(kwargs.values())[1]
 
                 # calculate explained variance per component and total explained variance
-                train_explained_variance = pca.explained_variance_ratio_ * 100
-                total_train_explained_variance = pca.explained_variance_ratio_[0:2].sum() * 100
+                twopca_train_explained_variance = pca.explained_variance_ratio_[0:2].sum() * 100
 
                 train_plot_2d = px.scatter(
                     X_train_continuous_tranformed[:, 0:2], x=0, y=1,
                     color=train_df_reduced[target],
-                    title=f'2D PCA plot (Total Explained Variance: {total_train_explained_variance:.2f}%)')
+                    title=f'2D PCA plot (2-component Explained Variance: {twopca_train_explained_variance:.2f}%, Total Components: {components}, Total Explained Variance: {total_train_explained_variance:.2f}%)')
                 
                 # for i, feature in enumerate(continuous):
                 #     train_plot_2d.add_shape(
@@ -877,13 +876,12 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
 
                 # 3-dimensional pca plot
                 # calculate explained variance per component and total explained variance
-                train_explained_variance = pca.explained_variance_ratio_ * 100
-                total_train_explained_variance = pca.explained_variance_ratio_[0:3].sum() * 100
+                threepca_train_explained_variance = pca.explained_variance_ratio_[0:3].sum() * 100
 
                 train_plot_3d = px.scatter_3d(
                     X_train_continuous_tranformed[:, 0:3], x=0, y=1, z=2,
                     color=train_df_reduced[target],
-                    title=f'3D PCA plot (Total Explained Variance: {total_train_explained_variance:.2f}%)',
+                    title=f'3D PCA plot (3-component Explained Variance: {threepca_train_explained_variance:.2f}%, Total Components: {components}, Total Explained Variance: {total_train_explained_variance:.2f}%)',
                     labels={'0': 'PC1', '1': 'PC2', '2': 'PC3'})
                 
                 train_plot_3d.show()
@@ -898,7 +896,7 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
                     labels=train_plot_labels,
                     dimensions=range(len(train_labels)),
                     color=train_df_reduced[target],
-                    title=f'Multi-dimensional PCA plot (Total Explained Variance: {total_train_explained_variance:.2f}%)')
+                    title=f'Multi-dimensional PCA plot (Components: {components}, Total Explained Variance: {total_train_explained_variance:.2f}%)')
                 
                 train_plot_fig.update_traces(diagonal_visible=False)
                 
@@ -1110,7 +1108,7 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
 
             return train_df_encoded, train_df_reduced, test_df_encoded, test_df_reduced
 
-### CLUSTER INERTIA PLOT ###
+### K-MEANS INERTIA PLOT ###
 def kmeans_inertia_plot(df: pd.DataFrame, identifier: list, target: str) -> None:
     '''
     The function calculates and plots inertia per cluster.
@@ -1171,16 +1169,19 @@ def kmeans_inertia_plot(df: pd.DataFrame, identifier: list, target: str) -> None
         fig.show()
             
 ### CLUSTERING FUNCTION ###
-def clustering(df: pd.DataFrame, identifier: list, target: str, method: str, data_type: str, **kwargs) -> pd.DataFrame:
+def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, target: str, method: str, plot_type: str, marker_size_ref: str, **kwargs) -> pd.DataFrame:
     
     '''
-    The function performs clustering on the given data.
+    The function performs clustering on the given input data.
 
     Parameters:
         df (Pandas DataFrame): data structure with loaded data
+        input_df (Pandas DataFrame): data structure with loaded data after dimensionality reduction (2d or 3d data)
         identifier (list): identifier features of the dataset
         method (str): clustering algorithm (kmeans, hierarchical, dbscan)
-        data_type (str): type of data to fit the algorithm (encoded or reduced)
+        input_data_type (str): type of data to fit the algorithm (normal, encoded or reduced)
+        plot_type (str): type of plot to display (2d: 2-dimensional plot, 3d: 3-dimensional plot)
+        marker_size_ref (str): reference feature based on which the size of the markers is defined
     
     **kwargs:
         K-Means:
@@ -1197,6 +1198,10 @@ def clustering(df: pd.DataFrame, identifier: list, target: str, method: str, dat
         error_message = "df must be specified as a Pandas DataFrame"
         raise TypeError(error_message)
     
+    if not isinstance(input_df, pd.DataFrame):
+        error_message = "input_df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
+    
     elif not isinstance(identifier, list):
         error_message = "identifier must be specified as a list of strings"
         raise TypeError(error_message)
@@ -1209,37 +1214,43 @@ def clustering(df: pd.DataFrame, identifier: list, target: str, method: str, dat
         error_message = "method must be specified as a string\noptions: kmeans, hierarchical or dbscan"
         raise TypeError(error_message)
     
-    elif not isinstance(data_type, str):
-        error_message = "data_type must be specified as a string\noptions: encoded or reduced"
+    # elif not isinstance(input_data_type, str):
+    #     error_message = "input_data_type must be specified as a string\noptions: normal, encoded or reduced"
+    #     raise TypeError(error_message)
+    
+    elif not isinstance(plot_type, str):
+        error_message = "plot_type must be specified as a string\noptions: 2d (2-dimensional plot) or 3d (3-dimensional plot)"
+        raise TypeError(error_message)
+    
+    elif not isinstance(marker_size_ref, str):
+        error_message = "marker_size_ref must be specified as a string"
         raise TypeError(error_message)
     
     else:
 
         if method == "kmeans":
             
-            true_label_names = np.array(df.loc[:,[target]].values)
+            true_label_names = np.array(input_df.loc[:,[target]].values)
     
             label_encoder = LabelEncoder()
             true_labels = label_encoder.fit_transform(true_label_names)
 
-            if data_type == "reduced":
-                X = df.drop(columns=[identifier[0], target]).values
+            if plot_type == "2d":
+                X = input_df.drop(columns=[identifier[0], target]).values
                 X = np.array(X)
-                # scaler = StandardScaler()
-                # X_scaled = scaler.fit_transform(X)
 
                 # define kmeans hyperpamaters
                 clusters = int(list(kwargs.values())[0])
                 initializations = int(list(kwargs.values())[1])
-                # random_state = int(list(kwargs.values())[2])
+                random_state = list(kwargs.values())[2]
 
-                kmeans = cluster.KMeans(n_clusters=clusters, n_init=initializations)
+                kmeans = cluster.KMeans(n_clusters=clusters, n_init=initializations, random_state=random_state)
                 kmeans.fit(X)
                 column_labels = ["Component_"+str(i+1) for i in range(2)]
-                cluster_df = pd.DataFrame(X, columns=column_labels, index=df.index)
+                cluster_df = pd.DataFrame(X, columns=column_labels, index=input_df.index)
                 cluster_df["Predicted_Labels"] = kmeans.labels_
                 cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
-                cluster_df["ID_REF"] = df[identifier[0]]
+                cluster_df["ID_REF"] = input_df[identifier[0]]
 
                 fig = go.Figure(data=go.Scatter(
                         x=cluster_df["Component_1"].values,
@@ -1247,15 +1258,19 @@ def clustering(df: pd.DataFrame, identifier: list, target: str, method: str, dat
                         text=cluster_df["ID_REF"],
                         mode='markers',
                         marker=go.Marker(
+                            size=df[marker_size_ref],
+                            sizemode='diameter',
+                            sizeref=df[marker_size_ref].max()/50,
                             opacity=1,
-                            color=cluster_df["Predicted_Labels"]
+                            color=cluster_df["Predicted_Labels"],
+                            colorscale="viridis"
                             )
                         )
                     )
 
                 fig.update_layout(
                     go.Layout(
-                        title=f'K-Means Clustering',
+                        title=f'K-Means Clustering (2D plot)',
                         xaxis=go.XAxis(title="Component_1", showgrid=True, zeroline=True, showticklabels=True),
                         yaxis=go.YAxis(title="Component_2", showgrid=True, zeroline=True, showticklabels=True),
                         hovermode='closest'
@@ -1264,23 +1279,50 @@ def clustering(df: pd.DataFrame, identifier: list, target: str, method: str, dat
 
                 fig.show()
             
-            # elif data_type == "encoded":
-            #     X = df.drop(columns=[identifier[0], target]).values
-            #     X = np.array(X)
-            #     scaler = StandardScaler()
-            #     X_scaled = scaler.fit_transform(X)
+            elif plot_type == "3d":
+                X = input_df.drop(columns=[identifier[0], target]).values
+                X = np.array(X)
 
-            #     # define kmeans hyperpamaters
-            #     clusters = int(list(kwargs.values())[0])
-            #     initializations = int(list(kwargs.values())[1])
-            #     random_state = float(list(kwargs.values())[2])
+                # define kmeans hyperpamaters
+                clusters = int(list(kwargs.values())[0])
+                initializations = int(list(kwargs.values())[1])
+                random_state = list(kwargs.values())[2]
 
-            #     kmeans = cluster.KMeans(n_clusters=clusters, n_init=initializations, random_state=random_state)
-            #     kmeans.fit(X_scaled)
-            #     column_labels = ["Component_"+{i} for i in len(X_scaled.columns)]
-            #     cluster_df = pd.DataFrame(X_scaled, columns=column_labels, index=X_scaled.index)
-            #     cluster_df["Predicted_Labels"] = kmeans.labels_
-            #     cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
+                kmeans = cluster.KMeans(n_clusters=clusters, n_init=initializations, random_state=random_state)
+                kmeans.fit(X)
+                column_labels = ["Component_"+str(i+1) for i in range(3)]
+                cluster_df = pd.DataFrame(X, columns=column_labels, index=input_df.index)
+                cluster_df["Predicted_Labels"] = kmeans.labels_
+                cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
+                cluster_df["ID_REF"] = input_df[identifier[0]]
+
+                fig = go.Figure(data=go.Scatter3d(
+                        x=cluster_df["Component_1"].values,
+                        y=cluster_df["Component_2"].values,
+                        z=cluster_df["Component_3"].values,
+                        text=cluster_df["ID_REF"],
+                        mode='markers',
+                        marker=go.Marker(
+                            size=df[marker_size_ref],
+                            sizemode='diameter',
+                            sizeref=df[marker_size_ref].max()/50,
+                            opacity=1,
+                            color=cluster_df["Predicted_Labels"],
+                            colorscale="viridis"
+                            )
+                        )
+                    )
+
+                fig.update_layout(
+                    go.Layout(
+                        title=f'K-Means Clustering (3D plot)',
+                        hovermode='closest'
+                    )
+                )
+
+                fig.show()
+            
+           
 
             return cluster_df
 
