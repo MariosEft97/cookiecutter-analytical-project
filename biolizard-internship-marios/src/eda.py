@@ -1236,6 +1236,85 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
         label_encoder = LabelEncoder()
         true_labels = label_encoder.fit_transform(true_label_names)
 
+        def plot_cluster_2d(algorithm, algorithm_name):
+            
+            column_labels = ["Component_"+str(i+1) for i in range(2)]
+            cluster_df = pd.DataFrame(X, columns=column_labels, index=input_df.index)
+            cluster_df["Predicted_Class"] = algorithm.labels_
+            label_dict = {i: level for i, level in enumerate(sorted(df[target].unique()))}
+            cluster_df["Predicted_Labels"] = cluster_df["Predicted_Class"].replace(label_dict)
+            cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
+            cluster_df["ID_REF"] = input_df[identifier[0]]
+
+            fig = px.scatter(
+                cluster_df,
+                x="Component_1",
+                y="Component_2",
+                color="Predicted_Labels",
+                size=df[marker_size_ref],
+                size_max=30,
+                hover_data={
+                    "Component_1":False,
+                    "Component_2":False,
+                    "ID_REF":True,
+                    "Predicted_Class":False,
+                    "Predicted_Labels":True,
+                    "True_Labels":True
+                })         
+
+            fig.update_layout(
+                go.Layout(
+                    title=f'{algorithm_name} Clustering (Silhouette: {silhouette:.2f}, ARI: {ari:.2f})',
+                    xaxis=go.XAxis(title="Component_1", showgrid=True, zeroline=True, showticklabels=True),
+                    yaxis=go.YAxis(title="Component_2", showgrid=True, zeroline=True, showticklabels=True),
+                    hovermode='closest'
+                )
+            )
+
+            fig.show()
+
+            return cluster_df
+        
+        def plot_cluster_3d(algorithm, algorithm_name):
+
+            column_labels = ["Component_"+str(i+1) for i in range(3)]
+            cluster_df = pd.DataFrame(X, columns=column_labels, index=input_df.index)
+            cluster_df["Predicted_Class"] = algorithm.labels_
+            label_dict = {i: level for i, level in enumerate(sorted(df[target].unique()))}
+            cluster_df["Predicted_Labels"] = cluster_df["Predicted_Class"].replace(label_dict)
+            cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
+            cluster_df["ID_REF"] = input_df[identifier[0]]
+
+            fig = px.scatter_3d(
+                cluster_df,
+                x="Component_1",
+                y="Component_2",
+                z="Component_3",
+                color="Predicted_Labels",
+                size=df[marker_size_ref],
+                size_max=30,
+                hover_data={
+                    "Component_1":False,
+                    "Component_2":False,
+                    "Component_3":False,
+                    "ID_REF":True,
+                    "Predicted_Class":False,
+                    "Predicted_Labels":True,
+                    "True_Labels":True
+                })         
+
+            fig.update_layout(
+                go.Layout(
+                    title=f'{algorithm_name} Clustering (Silhouette: {silhouette:.2f}, ARI: {ari:.2f})',
+                    hovermode='closest'
+                )
+            )
+
+            fig.show()
+
+            return cluster_df
+
+
         if method == "kmeans":
 
             # define kmeans hyperpamaters
@@ -1245,15 +1324,53 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
 
             kmeans = cluster.KMeans(n_clusters=clusters, n_init=initializations, random_state=random_state)
             kmeans.fit(X)
+            
             silhouette = silhouette_score(X, kmeans.labels_)
             ari = adjusted_rand_score(true_labels, kmeans.labels_)
             
             if plot_type == "2d":
+                cluster_df = plot_cluster_2d(algorithm=kmeans, algorithm_name="K-Means")
+            
+            elif plot_type == "3d":
+                cluster_df = plot_cluster_3d(algorithm=kmeans, algorithm_name="K-Means")
                 
+    
+        if method == "hierarchical":
+            
+            # define hierarchical clustering hyperpamaters
+            clusters = int(list(kwargs.values())[0])
+
+            hierarchical = cluster.AgglomerativeClustering(n_clusters=clusters)
+            hierarchical.fit(X)
+
+            silhouette = silhouette_score(X, hierarchical.labels_)
+            ari = adjusted_rand_score(true_labels, hierarchical.labels_)
+
+            if plot_type == "2d":
+                cluster_df = plot_cluster_2d(algorithm=hierarchical, algorithm_name="Hierarchical")
+
+            elif plot_type == "3d":
+                cluster_df = plot_cluster_3d(algorithm=hierarchical, algorithm_name="Hierarchical")
+                
+        
+        if method == "dbscan":
+            
+            # define dbscan hyperpamaters
+            epsilon = float(list(kwargs.values())[0])
+            minimum_samples = int(list(kwargs.values())[1])
+
+            dbscan = cluster.DBSCAN(eps=epsilon, min_samples=minimum_samples)
+            dbscan.fit(X)
+
+            # silhouette = silhouette_score(X, dbscan.labels_)
+            ari = adjusted_rand_score(true_labels, dbscan.labels_)
+
+            if plot_type == "2d":
+
                 column_labels = ["Component_"+str(i+1) for i in range(2)]
                 cluster_df = pd.DataFrame(X, columns=column_labels, index=input_df.index)
-                cluster_df["Predicted_Class"] = kmeans.labels_
-                label_dict = {0: "A", 1: "B", 2: "C", 3: "D"}
+                cluster_df["Predicted_Class"] = dbscan.labels_
+                label_dict = {i: level for i, level in enumerate(sorted(df[target].unique()))}
                 cluster_df["Predicted_Labels"] = cluster_df["Predicted_Class"].replace(label_dict)
                 cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
                 cluster_df["ID_REF"] = input_df[identifier[0]]
@@ -1274,52 +1391,9 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
                         "True_Labels":True
                     })         
 
-                # stage_names = ['A', 'B', 'C', 'D']
-                # stage_data = {stage: cluster_df[cluster_df["True_Labels"]==stage] for stage in stage_names}
-
-                # fig = go.Figure()
-
-                # for stage_name, stage_df in stage_data.items():
-
-                #     fig.add_trace(go.Scatter(
-                #         x=stage_df["Component_1"].values,
-                #         y=stage_df["Component_2"].values,
-                #         name=stage_name,
-                #         text=stage_df["ID_REF"],
-                #         hovertemplate =
-                #         'ID: %{text}'+
-                #         'Predicted Label: %{stage_df["Predicted_Labels"]}'+
-                #         'True Label: %{stage_df["True_Labels"]}'
-                #     ))
-
-                # fig.update_traces(
-                #     mode='markers',
-                #     marker={'size': df[marker_size_ref],
-                #     'sizemode':'diameter',
-                #     'sizeref': df[marker_size_ref].max()/50,
-                #     'opacity': 1,
-                #     'color': cluster_df["Predicted_Labels"],
-                #     'colorscale': "viridis"})
-
-                # fig = go.Figure(data=go.Scatter(
-                #         x=cluster_df["Component_1"].values,
-                #         y=cluster_df["Component_2"].values,
-                #         text=cluster_df["ID_REF"],
-                #         mode='markers',
-                #         marker=go.Marker(
-                #             size=df[marker_size_ref],
-                #             sizemode='diameter',
-                #             sizeref=df[marker_size_ref].max()/50,
-                #             opacity=1,
-                #             color=cluster_df["Predicted_Labels"],
-                #             colorscale="viridis"
-                #             )
-                #         )
-                #     )
-
                 fig.update_layout(
                     go.Layout(
-                        title=f'K-Means Clustering (Silhouette: {silhouette:.2f}, ARI: {ari:.2f})',
+                        title=f'DBSCAN Clustering (ARI: {ari:.2f})',
                         xaxis=go.XAxis(title="Component_1", showgrid=True, zeroline=True, showticklabels=True),
                         yaxis=go.YAxis(title="Component_2", showgrid=True, zeroline=True, showticklabels=True),
                         hovermode='closest'
@@ -1332,28 +1406,11 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
                 
                 column_labels = ["Component_"+str(i+1) for i in range(3)]
                 cluster_df = pd.DataFrame(X, columns=column_labels, index=input_df.index)
-                cluster_df["Predicted_Class"] = kmeans.labels_
-                label_dict = {0: "A", 1: "B", 2: "C", 3: "D"}
+                cluster_df["Predicted_Class"] = dbscan.labels_
+                label_dict = {i: level for i, level in enumerate(sorted(df[target].unique()))}
                 cluster_df["Predicted_Labels"] = cluster_df["Predicted_Class"].replace(label_dict)
                 cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
                 cluster_df["ID_REF"] = input_df[identifier[0]]
-
-                # fig = go.Figure(data=go.Scatter3d(
-                #         x=cluster_df["Component_1"].values,
-                #         y=cluster_df["Component_2"].values,
-                #         z=cluster_df["Component_3"].values,
-                #         text=cluster_df["ID_REF"],
-                #         mode='markers',
-                #         marker=go.Marker(
-                #             size=df[marker_size_ref],
-                #             sizemode='diameter',
-                #             sizeref=df[marker_size_ref].max()/50,
-                #             opacity=1,
-                #             color=cluster_df["Predicted_Labels"],
-                #             colorscale="viridis"
-                #             )
-                #         )
-                #     )
 
                 fig = px.scatter_3d(
                     cluster_df,
@@ -1375,162 +1432,7 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
 
                 fig.update_layout(
                     go.Layout(
-                        title=f'K-Means Clustering (Silhouette: {silhouette:.2f}, ARI: {ari:.2f})',
-                        hovermode='closest'
-                    )
-                )
-
-                fig.show()
-    
-        if method == "hierarchical":
-            
-            # define kmeans hyperpamaters
-            clusters = int(list(kwargs.values())[0])
-
-            hierarchical = cluster.AgglomerativeClustering(n_clusters=clusters)
-            hierarchical.fit(X)
-
-            if plot_type == "2d":
-
-                column_labels = ["Component_"+str(i+1) for i in range(2)]
-                cluster_df = pd.DataFrame(X, columns=column_labels, index=input_df.index)
-                cluster_df["Predicted_Labels"] = hierarchical.labels_
-                cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
-                cluster_df["ID_REF"] = input_df[identifier[0]]
-
-                fig = go.Figure(data=go.Scatter(
-                        x=cluster_df["Component_1"].values,
-                        y=cluster_df["Component_2"].values,
-                        text=cluster_df["ID_REF"],
-                        mode='markers',
-                        marker=go.Marker(
-                            size=df[marker_size_ref],
-                            sizemode='diameter',
-                            sizeref=df[marker_size_ref].max()/50,
-                            opacity=1,
-                            color=cluster_df["Predicted_Labels"],
-                            colorscale="viridis"
-                            )
-                        )
-                    )
-
-                fig.update_layout(
-                    go.Layout(
-                        title=f'Hierarchical Clustering (2D plot)',
-                        xaxis=go.XAxis(title="Component_1", showgrid=True, zeroline=True, showticklabels=True),
-                        yaxis=go.YAxis(title="Component_2", showgrid=True, zeroline=True, showticklabels=True),
-                        hovermode='closest'
-                    )
-                )
-
-                fig.show()
-            
-            elif plot_type == "3d":
-                
-                column_labels = ["Component_"+str(i+1) for i in range(3)]
-                cluster_df = pd.DataFrame(X, columns=column_labels, index=input_df.index)
-                cluster_df["Predicted_Labels"] = hierarchical.labels_
-                cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
-                cluster_df["ID_REF"] = input_df[identifier[0]]
-
-                fig = go.Figure(data=go.Scatter3d(
-                        x=cluster_df["Component_1"].values,
-                        y=cluster_df["Component_2"].values,
-                        z=cluster_df["Component_3"].values,
-                        text=cluster_df["ID_REF"],
-                        mode='markers',
-                        marker=go.Marker(
-                            size=df[marker_size_ref],
-                            sizemode='diameter',
-                            sizeref=df[marker_size_ref].max()/50,
-                            opacity=1,
-                            color=cluster_df["Predicted_Labels"],
-                            colorscale="viridis"
-                            )
-                        )
-                    )
-
-                fig.update_layout(
-                    go.Layout(
-                        title=f'Hierarchical Clustering (3D plot)',
-                        hovermode='closest'
-                    )
-                )
-
-                fig.show()
-        
-        if method == "dbscan":
-            
-            # define kmeans hyperpamaters
-            epsilon = float(list(kwargs.values())[0])
-            minimum_samples = int(list(kwargs.values())[1])
-
-            dbscan = cluster.DBSCAN(eps=epsilon, min_samples=minimum_samples)
-            dbscan.fit(X)
-
-            if plot_type == "2d":
-
-                column_labels = ["Component_"+str(i+1) for i in range(2)]
-                cluster_df = pd.DataFrame(X, columns=column_labels, index=input_df.index)
-                cluster_df["Predicted_Labels"] = dbscan.labels_
-                cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
-                cluster_df["ID_REF"] = input_df[identifier[0]]
-
-                fig = go.Figure(data=go.Scatter(
-                        x=cluster_df["Component_1"].values,
-                        y=cluster_df["Component_2"].values,
-                        text=cluster_df[["ID_REF", "Predicted_Labels", "True_Labels"]],
-                        mode='markers',
-                        marker=go.Marker(
-                            size=df[marker_size_ref],
-                            sizemode='diameter',
-                            sizeref=df[marker_size_ref].max()/50,
-                            opacity=1,
-                            color=cluster_df["Predicted_Labels"],
-                            colorscale="viridis"
-                            )
-                        )
-                    )
-
-                fig.update_layout(
-                    go.Layout(
-                        title=f'Hierarchical Clustering (2D plot)',
-                        xaxis=go.XAxis(title="Component_1", showgrid=True, zeroline=True, showticklabels=True),
-                        yaxis=go.YAxis(title="Component_2", showgrid=True, zeroline=True, showticklabels=True),
-                        hovermode='closest'
-                    )
-                )
-
-                fig.show()
-            
-            elif plot_type == "3d":
-                
-                column_labels = ["Component_"+str(i+1) for i in range(3)]
-                cluster_df = pd.DataFrame(X, columns=column_labels, index=input_df.index)
-                cluster_df["Predicted_Labels"] = hierarchical.labels_
-                cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
-                cluster_df["ID_REF"] = input_df[identifier[0]]
-
-                fig = go.Figure(data=go.Scatter3d(
-                        x=cluster_df["Component_1"].values,
-                        y=cluster_df["Component_2"].values,
-                        z=cluster_df["Component_3"].values,
-                        text=cluster_df["ID_REF"],
-                        mode='markers',
-                        marker=go.Marker(
-                            size=df[marker_size_ref],
-                            sizemode='diameter',
-                            sizeref=df[marker_size_ref].max()/50,
-                            opacity=1,
-                            color=cluster_df["Predicted_Labels"],
-                            colorscale="viridis"
-                            )
-                        )
-                    )
-
-                fig.update_layout(
-                    go.Layout(
-                        title=f'Hierarchical Clustering (3D plot)',
+                        title=f'DBSCAN Clustering (ARI: {ari:.2f})',
                         hovermode='closest'
                     )
                 )
@@ -1540,6 +1442,4 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
            
 
         return cluster_df
-
-
 

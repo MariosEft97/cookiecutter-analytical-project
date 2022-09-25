@@ -150,7 +150,67 @@ def box_plot_v2(df: pd.DataFrame, features: list, categorical: list) -> None:
         with output:
             boxplot_creator(df, feature_dropdown.value, stratify_bool_dropdown.value, group_bool_dropdown.value, stratify_feature_dropdown.value, group_feature_dropdown.value)
                 
-        
+### CLUSTERING PLOT CODE ###
+# stage_names = ['A', 'B', 'C', 'D']
+# stage_data = {stage: cluster_df[cluster_df["True_Labels"]==stage] for stage in stage_names}
+
+# fig = go.Figure()
+
+# for stage_name, stage_df in stage_data.items():
+
+#     fig.add_trace(go.Scatter(
+#         x=stage_df["Component_1"].values,
+#         y=stage_df["Component_2"].values,
+#         name=stage_name,
+#         text=stage_df["ID_REF"],
+#         hovertemplate =
+#         'ID: %{text}'+
+#         'Predicted Label: %{stage_df["Predicted_Labels"]}'+
+#         'True Label: %{stage_df["True_Labels"]}'
+#     ))
+
+# fig.update_traces(
+#     mode='markers',
+#     marker={'size': df[marker_size_ref],
+#     'sizemode':'diameter',
+#     'sizeref': df[marker_size_ref].max()/50,
+#     'opacity': 1,
+#     'color': cluster_df["Predicted_Labels"],
+#     'colorscale': "viridis"})
+
+# fig = go.Figure(data=go.Scatter(
+#         x=cluster_df["Component_1"].values,
+#         y=cluster_df["Component_2"].values,
+#         text=cluster_df["ID_REF"],
+#         mode='markers',
+#         marker=go.Marker(
+#             size=df[marker_size_ref],
+#             sizemode='diameter',
+#             sizeref=df[marker_size_ref].max()/50,
+#             opacity=1,
+#             color=cluster_df["Predicted_Labels"],
+#             colorscale="viridis"
+#             )
+#         )
+#     )
+
+# fig = go.Figure(data=go.Scatter3d(
+#         x=cluster_df["Component_1"].values,
+#         y=cluster_df["Component_2"].values,
+#         z=cluster_df["Component_3"].values,
+#         text=cluster_df["ID_REF"],
+#         mode='markers',
+#         marker=go.Marker(
+#             size=df[marker_size_ref],
+#             sizemode='diameter',
+#             sizeref=df[marker_size_ref].max()/50,
+#             opacity=1,
+#             color=cluster_df["Predicted_Labels"],
+#             colorscale="viridis"
+#             )
+#         )
+#     )
+
 
 
 
