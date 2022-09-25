@@ -212,6 +212,26 @@ def box_plot_v2(df: pd.DataFrame, features: list, categorical: list) -> None:
 #     )
 
 
+### HISTOGRAM PLOT ###
+
+# histogram
+
+# gene_list = list(df.columns[9:])
+# gene_slice = gene_list[0:10]
+# feature_list = []
+# for feature in gene_list:
+#     feature_list.append((feature, feature))
+
+# import plotly.express as px
+# import ipywidgets as widgets
+
+# def fig_creator(selection):
+#     fig = px.histogram(train_df, x=selection, color="Dukes Stage", facet_col="Dukes Stage")
+#     fig.show()
+
+# widgets.interact(fig_creator, selection=widgets.Dropdown(options=feature_list, description='Select:'));
+
+
 
 
 

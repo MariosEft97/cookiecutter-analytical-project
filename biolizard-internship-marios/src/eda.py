@@ -41,7 +41,7 @@ def correlations(df: pd.DataFrame, type: str="pearson", printout: str="matrix") 
         raise TypeError(error_message)
 
     elif not isinstance(type, str):
-        error_message = "type must be specified as a string\noptions:\noptions: pearson or spearman"
+        error_message = "type must be specified as a string\noptions: pearson or spearman"
         raise TypeError(error_message)
     
     elif not isinstance(printout, str):
