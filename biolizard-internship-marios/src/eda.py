@@ -16,6 +16,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler, LabelBinarizer, OneHotEncoder, LabelEncoder
 from sklearn.manifold import MDS, TSNE 
 import sklearn.cluster as cluster
+from sklearn.metrics import silhouette_score, adjusted_rand_score
 import umap
 import warnings
 warnings.filterwarnings('ignore')
@@ -1244,30 +1245,34 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
 
             kmeans = cluster.KMeans(n_clusters=clusters, n_init=initializations, random_state=random_state)
             kmeans.fit(X)
+            silhouette = silhouette_score(X, kmeans.labels_)
+            ari = adjusted_rand_score(true_labels, kmeans.labels_)
             
             if plot_type == "2d":
                 
                 column_labels = ["Component_"+str(i+1) for i in range(2)]
                 cluster_df = pd.DataFrame(X, columns=column_labels, index=input_df.index)
-                cluster_df["Predicted_Labels"] = kmeans.labels_
-                # label_dict = {0: "A", 1: "B", 2: "C", 3: "D"}
-                # cluster_df["Predicted_Labels"] = cluster_df["Predicted_Labels"].replace(label_dict)
+                cluster_df["Predicted_Class"] = kmeans.labels_
+                label_dict = {0: "A", 1: "B", 2: "C", 3: "D"}
+                cluster_df["Predicted_Labels"] = cluster_df["Predicted_Class"].replace(label_dict)
                 cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
                 cluster_df["ID_REF"] = input_df[identifier[0]]
 
-                # fig = px.scatter(
-                #     cluster_df,
-                #     x="Component_1",
-                #     y="Component_2",
-                #     color="Predicted_Labels",
-                #     color_continuous_scale=px.colors.sequential.Viridis,
-                #     title=f'K-Means Clustering (2D plot)',
-                #     hover_data={
-                #         "Component_1": False,
-                #         "Component_2": False,
-                #         'ID_REF': True,
-                #         'Predicted_Labels': True,
-                #         'True_Labels': True})                
+                fig = px.scatter(
+                    cluster_df,
+                    x="Component_1",
+                    y="Component_2",
+                    color="Predicted_Labels",
+                    size=df[marker_size_ref],
+                    size_max=30,
+                    hover_data={
+                        "Component_1":False,
+                        "Component_2":False,
+                        "ID_REF":True,
+                        "Predicted_Class":False,
+                        "Predicted_Labels":True,
+                        "True_Labels":True
+                    })         
 
                 # stage_names = ['A', 'B', 'C', 'D']
                 # stage_data = {stage: cluster_df[cluster_df["True_Labels"]==stage] for stage in stage_names}
@@ -1282,9 +1287,9 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
                 #         name=stage_name,
                 #         text=stage_df["ID_REF"],
                 #         hovertemplate =
-                #         'ID: {text}'+
-                #         'Predicted Label: {stage_df["Predicted_Labels"]}'+
-                #         'True Label: {stage_df["True_Labels"]}'
+                #         'ID: %{text}'+
+                #         'Predicted Label: %{stage_df["Predicted_Labels"]}'+
+                #         'True Label: %{stage_df["True_Labels"]}'
                 #     ))
 
                 # fig.update_traces(
@@ -1296,25 +1301,25 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
                 #     'color': cluster_df["Predicted_Labels"],
                 #     'colorscale': "viridis"})
 
-                fig = go.Figure(data=go.Scatter(
-                        x=cluster_df["Component_1"].values,
-                        y=cluster_df["Component_2"].values,
-                        text=cluster_df["ID_REF"],
-                        mode='markers',
-                        marker=go.Marker(
-                            size=df[marker_size_ref],
-                            sizemode='diameter',
-                            sizeref=df[marker_size_ref].max()/50,
-                            opacity=1,
-                            color=cluster_df["Predicted_Labels"],
-                            colorscale="viridis"
-                            )
-                        )
-                    )
+                # fig = go.Figure(data=go.Scatter(
+                #         x=cluster_df["Component_1"].values,
+                #         y=cluster_df["Component_2"].values,
+                #         text=cluster_df["ID_REF"],
+                #         mode='markers',
+                #         marker=go.Marker(
+                #             size=df[marker_size_ref],
+                #             sizemode='diameter',
+                #             sizeref=df[marker_size_ref].max()/50,
+                #             opacity=1,
+                #             color=cluster_df["Predicted_Labels"],
+                #             colorscale="viridis"
+                #             )
+                #         )
+                #     )
 
                 fig.update_layout(
                     go.Layout(
-                        title=f'K-Means Clustering (2D plot)',
+                        title=f'K-Means Clustering (Silhouette: {silhouette:.2f}, ARI: {ari:.2f})',
                         xaxis=go.XAxis(title="Component_1", showgrid=True, zeroline=True, showticklabels=True),
                         yaxis=go.YAxis(title="Component_2", showgrid=True, zeroline=True, showticklabels=True),
                         hovermode='closest'
@@ -1327,30 +1332,50 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
                 
                 column_labels = ["Component_"+str(i+1) for i in range(3)]
                 cluster_df = pd.DataFrame(X, columns=column_labels, index=input_df.index)
-                cluster_df["Predicted_Labels"] = kmeans.labels_
+                cluster_df["Predicted_Class"] = kmeans.labels_
+                label_dict = {0: "A", 1: "B", 2: "C", 3: "D"}
+                cluster_df["Predicted_Labels"] = cluster_df["Predicted_Class"].replace(label_dict)
                 cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
                 cluster_df["ID_REF"] = input_df[identifier[0]]
 
-                fig = go.Figure(data=go.Scatter3d(
-                        x=cluster_df["Component_1"].values,
-                        y=cluster_df["Component_2"].values,
-                        z=cluster_df["Component_3"].values,
-                        text=cluster_df["ID_REF"],
-                        mode='markers',
-                        marker=go.Marker(
-                            size=df[marker_size_ref],
-                            sizemode='diameter',
-                            sizeref=df[marker_size_ref].max()/50,
-                            opacity=1,
-                            color=cluster_df["Predicted_Labels"],
-                            colorscale="viridis"
-                            )
-                        )
-                    )
+                # fig = go.Figure(data=go.Scatter3d(
+                #         x=cluster_df["Component_1"].values,
+                #         y=cluster_df["Component_2"].values,
+                #         z=cluster_df["Component_3"].values,
+                #         text=cluster_df["ID_REF"],
+                #         mode='markers',
+                #         marker=go.Marker(
+                #             size=df[marker_size_ref],
+                #             sizemode='diameter',
+                #             sizeref=df[marker_size_ref].max()/50,
+                #             opacity=1,
+                #             color=cluster_df["Predicted_Labels"],
+                #             colorscale="viridis"
+                #             )
+                #         )
+                #     )
+
+                fig = px.scatter_3d(
+                    cluster_df,
+                    x="Component_1",
+                    y="Component_2",
+                    z="Component_3",
+                    color="Predicted_Labels",
+                    size=df[marker_size_ref],
+                    size_max=30,
+                    hover_data={
+                        "Component_1":False,
+                        "Component_2":False,
+                        "Component_3":False,
+                        "ID_REF":True,
+                        "Predicted_Class":False,
+                        "Predicted_Labels":True,
+                        "True_Labels":True
+                    })         
 
                 fig.update_layout(
                     go.Layout(
-                        title=f'K-Means Clustering (3D plot)',
+                        title=f'K-Means Clustering (Silhouette: {silhouette:.2f}, ARI: {ari:.2f})',
                         hovermode='closest'
                     )
                 )
