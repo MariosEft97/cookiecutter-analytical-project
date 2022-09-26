@@ -4,7 +4,11 @@ sys.path.append(r"C:\Users\35799\Desktop\cookiecutter-analytical-project\bioliza
 import pandas as pd
 from sklearn.feature_selection import RFE
 from boruta import BorutaPy
+from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import BaggingClassifier, RandomForestClassifier, AdaBoostClassifier
 
 
 ### FEATURE SELECTION FUNCTION ###
@@ -21,12 +25,12 @@ def feature_selection(df: pd.DataFrame, identifier: list, target: str, method: s
         
         **kwargs:
             REF:
-                estimator (str): estimator that assigns weights to the features
+                estimator (str): estimator that assigns weights to the features (accepts: tree, logistic, svc, knn, bagging, forest, adaboost) 
                 selected_features_number (int): number of features to select, if None (default) selects half of the features
 
     
     Returns:
-        selected_df (pd.DataFrame): data structure with the only the selected features
+        feature_selection_df (pd.DataFrame): data structure with the only the selected features
 
     """
     if not isinstance(df, pd.DataFrame):
@@ -57,13 +61,22 @@ def feature_selection(df: pd.DataFrame, identifier: list, target: str, method: s
 
             # estimators
             tree = DecisionTreeClassifier()
+            logistic = LogisticRegression()
+            svc = SVC()
+            knn = KNeighborsClassifier()
+            bagging = BaggingClassifier()
+            forest = RandomForestClassifier()
+            adaboost = AdaBoostClassifier()
 
             # estimators' dictionary
-            estimators = {"tree": tree}
+            estimators = {"tree": tree, "logistic": logistic, "svc": svc, "knn": knn, "bagging": bagging, "forest": forest, "adaboost": adaboost}
 
             rfe = RFE(estimator=estimators[estimator], n_features_to_select=selected_features_number)
-            X_new = rfe.fit_transform(X, y)
-
-            return X_new
+            rfe.fit(X, y)
+            X_new = rfe.transform(X)
+            selected_features = rfe.get_feature_names_out(X.columns)
+            X_new_df = pd.DataFrame(X_new, columns=selected_features)
+            feature_selection_df = pd.concat([df[identifier[0]].reset_index(drop=True), X_new_df.reset_index(drop=True), y.reset_index(drop=True)], axis=1)
+            return feature_selection_df
 
 
