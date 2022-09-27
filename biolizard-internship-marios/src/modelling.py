@@ -2,11 +2,11 @@
 import sys
 sys.path.append(r"C:\Users\35799\Desktop\cookiecutter-analytical-project\biolizard-internship-marios\src")
 import pandas as pd
-from sklearn.feature_selection import RFE
+from sklearn.feature_selection import RFE, SelectFromModel
 from boruta import BorutaPy
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.svm import SVC
+from sklearn.svm import SVC, LinearSVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import BaggingClassifier, RandomForestClassifier, AdaBoostClassifier
 
@@ -59,13 +59,14 @@ def feature_selection(df: pd.DataFrame, identifier: list, target: str, method: s
         tree = DecisionTreeClassifier()
         logistic = LogisticRegression()
         svc = SVC()
+        linearSVC = LinearSVC()
         knn = KNeighborsClassifier()
         bagging = BaggingClassifier()
         forest = RandomForestClassifier()
         adaboost = AdaBoostClassifier()
 
         # estimators' dictionary
-        estimators = {"tree": tree, "logistic": logistic, "svc": svc, "knn": knn, "bagging": bagging, "forest": forest, "adaboost": adaboost}
+        estimators = {"Tree": tree, "Logistic": logistic, "SVC": svc, "linearSVC": linearSVC, "KNN": knn, "Bagging": bagging, "Forest": forest, "AdaBoost": adaboost}
 
         if method == "RFE":
             # define RFE hyperparameters
@@ -96,6 +97,28 @@ def feature_selection(df: pd.DataFrame, identifier: list, target: str, method: s
             X_new_df = pd.DataFrame(X_new, columns=selected_features)
             feature_selection_df = pd.concat([df[identifier[0]].reset_index(drop=True), X_new_df.reset_index(drop=True), y.reset_index(drop=True)], axis=1)
             return feature_selection_df
+        
+        elif method == "L1":
+            # estimators
+            logistic = LogisticRegression(penalty="l1", solver="saga")
+            linearSVC = LinearSVC(penalty="l1", loss="squared_hinge", dual=False)
+
+            # estimators' dictionary
+            estimators = {"Logistic": logistic, "linearSVC": linearSVC}
+
+            # define L1-based selection model hyperparameters
+            estimator = str(list(kwargs.values())[0])
+
+            l1 = SelectFromModel(estimator=estimators[estimator])
+            l1.fit(X, y)
+            X_new = l1.transform(X)
+            selected_features = X.loc[:, l1.get_support()].columns
+            X_new_df = pd.DataFrame(X_new, columns=selected_features)
+            feature_selection_df = pd.concat([df[identifier[0]].reset_index(drop=True), X_new_df.reset_index(drop=True), y.reset_index(drop=True)], axis=1)
+            return feature_selection_df
+
+
+            
 
 
         
