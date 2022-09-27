@@ -55,21 +55,22 @@ def feature_selection(df: pd.DataFrame, identifier: list, target: str, method: s
         X = df.drop(columns=[target, identifier[0]])
         y = df[target]
 
+        # estimators
+        tree = DecisionTreeClassifier()
+        logistic = LogisticRegression()
+        svc = SVC()
+        knn = KNeighborsClassifier()
+        bagging = BaggingClassifier()
+        forest = RandomForestClassifier()
+        adaboost = AdaBoostClassifier()
+
+        # estimators' dictionary
+        estimators = {"tree": tree, "logistic": logistic, "svc": svc, "knn": knn, "bagging": bagging, "forest": forest, "adaboost": adaboost}
+
         if method == "RFE":
+            # define RFE hyperparameters
             estimator = str(list(kwargs.values())[0])
             selected_features_number = list(kwargs.values())[1]
-
-            # estimators
-            tree = DecisionTreeClassifier()
-            logistic = LogisticRegression()
-            svc = SVC()
-            knn = KNeighborsClassifier()
-            bagging = BaggingClassifier()
-            forest = RandomForestClassifier()
-            adaboost = AdaBoostClassifier()
-
-            # estimators' dictionary
-            estimators = {"tree": tree, "logistic": logistic, "svc": svc, "knn": knn, "bagging": bagging, "forest": forest, "adaboost": adaboost}
 
             rfe = RFE(estimator=estimators[estimator], n_features_to_select=selected_features_number)
             rfe.fit(X, y)
@@ -78,5 +79,25 @@ def feature_selection(df: pd.DataFrame, identifier: list, target: str, method: s
             X_new_df = pd.DataFrame(X_new, columns=selected_features)
             feature_selection_df = pd.concat([df[identifier[0]].reset_index(drop=True), X_new_df.reset_index(drop=True), y.reset_index(drop=True)], axis=1)
             return feature_selection_df
+
+        elif method == "Boruta":
+            # BorutaPy accepts only numpy arrays
+            X_array = X.values
+            y_array = y.values
+
+            # define BorutaPy hyperparameters
+            estimator = str(list(kwargs.values())[0])
+            random_state = list(kwargs.values())[1]
+
+            boruta = BorutaPy(estimator=estimators[estimator], n_estimators="auto", random_state=random_state)
+            boruta.fit(X_array, y_array)
+            X_new = boruta.transform(X_array)
+            selected_features = X.loc[:, boruta.support_].columns
+            X_new_df = pd.DataFrame(X_new, columns=selected_features)
+            feature_selection_df = pd.concat([df[identifier[0]].reset_index(drop=True), X_new_df.reset_index(drop=True), y.reset_index(drop=True)], axis=1)
+            return feature_selection_df
+
+
+        
 
 
