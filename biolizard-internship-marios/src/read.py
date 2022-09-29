@@ -10,14 +10,18 @@ from tabulate import tabulate
 # from IPython.display import display
 
 ### DATA LOAD FUNCTION ###
-def data_load(folder: str, filename: str) -> pd.DataFrame:
+def data_load(folder: str, filename: str, **kwargs) -> pd.DataFrame:
     
     '''
     The function loads the data and returns an appropriate data structure (Pandas DataFrame).
 
     Parameters:
         folder (str): path of the folder where the data are found
-        filename (str): name of the data file 
+        filename (str): name of the data file
+
+    **kwargs:
+        txt or data extensions:
+            delimiter (str): delimiter used in the data file
     
     Returns:
         df (Pandas DataFrame): data structure with loaded data
@@ -44,11 +48,15 @@ def data_load(folder: str, filename: str) -> pd.DataFrame:
         
         # read txt files
         elif filepath.endswith('.txt'):
-            df = pd.read_table(filepath)
+            df = pd.read_table(filepath, delimiter=str(list(kwargs.values())[0]))
         
         # read json files
         elif filepath.endswith('.json'):
             df = pd.read_json(filepath)
+        
+        # read data files
+        elif filepath.endswith('.data'):
+            df = pd.read_table(filepath, delimiter=str(list(kwargs.values())[0]))
         
         # error message when data type is not supported
         else:
@@ -118,7 +126,7 @@ def data_info(df: pd.DataFrame, threshold: int=20) -> list:
         columns = list(df.columns)
 
         for column in columns:
-            if (len(df.loc[:,column].unique()) == entry_num) and (df[column].dtype == "object"):
+            if (len(df.loc[:,column].unique()) == entry_num) and (df[column].dtype == "object" or df[column].dtype == "int64"):
                 identifier.append(column)
             elif len(df.loc[:,column].unique()) >= threshold:
                 continuous.append(column)

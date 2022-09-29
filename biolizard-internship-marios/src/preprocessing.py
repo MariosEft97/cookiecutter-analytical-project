@@ -541,7 +541,7 @@ def target_balance_check(train_df: pd.DataFrame, target: str, imbalance_fraction
         # data structures for deciding whether dataset is balanced or unbalanced
         level_percentage_diff = list(np.diff(level_percentages))
         level_percentage_diff_sorted = sorted(level_percentage_diff)
-        level_percentage_diff_bool = [i>=imbalance_fraction for i in level_percentage_diff_sorted]
+        level_percentage_diff_bool = [abs(i)>=imbalance_fraction for i in level_percentage_diff_sorted]
 
         if True in level_percentage_diff_bool:
             print("\n")

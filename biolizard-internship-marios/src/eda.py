@@ -629,26 +629,27 @@ def pca_variance_plot(train_df: pd.DataFrame, identifier: list, categorical: lis
         # remove target and ID feature
         X_train = train_df.drop(columns=[target, identifier[0]])
 
-        binary_encoded_features = []
-        onehot_encoded_features = []
+        if len(categorical_without_target) > 0:
+            binary_encoded_features = []
+            onehot_encoded_features = []
 
-        # encode categorical features
-        for feature in categorical_without_target:
-            if len(X_train[feature].unique()) == 2:
-                lb = LabelBinarizer()
-                encoded_feature = lb.fit_transform(X_train[feature])
-                encoded_feature_df = pd.DataFrame(encoded_feature, columns=[feature])
-                binary_encoded_features.append(encoded_feature_df)
-            elif len(X_train[feature].unique()) > 2:
-                ohe = OneHotEncoder()
-                encoded_feature = ohe.fit_transform(X_train[[feature]]).toarray()
-                encoded_feature_df = pd.DataFrame(encoded_feature, columns = [feature+"_"+X_train[feature].unique()[i] for i in range(len(X_train[feature].unique()))])
-                onehot_encoded_features.append(encoded_feature_df)
+            # encode categorical features
+            for feature in categorical_without_target:
+                if len(X_train[feature].unique()) == 2:
+                    lb = LabelBinarizer()
+                    encoded_feature = lb.fit_transform(X_train[feature])
+                    encoded_feature_df = pd.DataFrame(encoded_feature, columns=[feature])
+                    binary_encoded_features.append(encoded_feature_df)
+                elif len(X_train[feature].unique()) > 2:
+                    ohe = OneHotEncoder()
+                    encoded_feature = ohe.fit_transform(X_train[[feature]]).toarray()
+                    encoded_feature_df = pd.DataFrame(encoded_feature, columns = [feature+"_"+X_train[feature].unique()[i] for i in range(len(X_train[feature].unique()))])
+                    onehot_encoded_features.append(encoded_feature_df)
 
-        X_train = X_train.drop(columns=categorical_without_target)
-        binary_encoded_features_df = pd.concat(binary_encoded_features, axis=1)
-        onehot_encoded_features_df = pd.concat(onehot_encoded_features, axis=1)
-        X_train = pd.concat([binary_encoded_features_df.reset_index(drop=True), onehot_encoded_features_df.reset_index(drop=True), X_train.reset_index(drop=True)], axis=1)
+            X_train = X_train.drop(columns=categorical_without_target)
+            binary_encoded_features_df = pd.concat(binary_encoded_features, axis=1)
+            onehot_encoded_features_df = pd.concat(onehot_encoded_features, axis=1)
+            X_train = pd.concat([binary_encoded_features_df.reset_index(drop=True), onehot_encoded_features_df.reset_index(drop=True), X_train.reset_index(drop=True)], axis=1)
 
         # dataset into a numpy array
         X_train_continuous = X_train.values
@@ -762,24 +763,28 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
         train_binary_encoded_features = []
         train_onehot_encoded_features = []
 
-        # encode categorical features of train set
-        for feature in categorical_without_target:
-            if len(X_train[feature].unique()) == 2:
-                lb = LabelBinarizer()
-                encoded_feature = lb.fit_transform(X_train[feature])
-                encoded_feature_df = pd.DataFrame(encoded_feature, columns=[feature])
-                train_binary_encoded_features.append(encoded_feature_df)
-            elif len(X_train[feature].unique()) > 2:
-                ohe = OneHotEncoder()
-                encoded_feature = ohe.fit_transform(X_train[[feature]]).toarray()
-                encoded_feature_df = pd.DataFrame(encoded_feature, columns = [feature+"_"+X_train[feature].unique()[i] for i in range(len(X_train[feature].unique()))])
-                train_onehot_encoded_features.append(encoded_feature_df)
+        if len(categorical_without_target) > 0:
+            # encode categorical features of train set
+            for feature in categorical_without_target:
+                if len(X_train[feature].unique()) == 2:
+                    lb = LabelBinarizer()
+                    encoded_feature = lb.fit_transform(X_train[feature])
+                    encoded_feature_df = pd.DataFrame(encoded_feature, columns=[feature])
+                    train_binary_encoded_features.append(encoded_feature_df)
+                elif len(X_train[feature].unique()) > 2:
+                    ohe = OneHotEncoder()
+                    encoded_feature = ohe.fit_transform(X_train[[feature]]).toarray()
+                    encoded_feature_df = pd.DataFrame(encoded_feature, columns = [feature+"_"+X_train[feature].unique()[i] for i in range(len(X_train[feature].unique()))])
+                    train_onehot_encoded_features.append(encoded_feature_df)
 
-        X_train = X_train.drop(columns=categorical_without_target)
-        train_binary_encoded_features_df = pd.concat(train_binary_encoded_features, axis=1)
-        train_onehot_encoded_features_df = pd.concat(train_onehot_encoded_features, axis=1)
-        X_train = pd.concat([train_binary_encoded_features_df.reset_index(drop=True), train_onehot_encoded_features_df.reset_index(drop=True), X_train.reset_index(drop=True)], axis=1)
-        train_df_encoded = pd.concat([X_train_df_identifier.reset_index(drop=True), X_train.reset_index(drop=True), y_train.reset_index(drop=True)], axis=1)
+            X_train = X_train.drop(columns=categorical_without_target)
+            train_binary_encoded_features_df = pd.concat(train_binary_encoded_features, axis=1)
+            train_onehot_encoded_features_df = pd.concat(train_onehot_encoded_features, axis=1)
+            X_train = pd.concat([train_binary_encoded_features_df.reset_index(drop=True), train_onehot_encoded_features_df.reset_index(drop=True), X_train.reset_index(drop=True)], axis=1)
+            train_df_encoded = pd.concat([X_train_df_identifier.reset_index(drop=True), X_train.reset_index(drop=True), y_train.reset_index(drop=True)], axis=1)
+        
+        else:
+            train_df_encoded = pd.DataFrame()
         
         # dataset into a numpy array
         X_train_continuous = X_train.values
@@ -798,24 +803,28 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
         test_binary_encoded_features = []
         test_onehot_encoded_features = []
 
-        # encode categorical features of test set
-        for feature in categorical_without_target:
-            if len(X_test[feature].unique()) == 2:
-                lb = LabelBinarizer()
-                encoded_feature = lb.fit_transform(X_test[feature])
-                encoded_feature_df = pd.DataFrame(encoded_feature, columns=[feature])
-                test_binary_encoded_features.append(encoded_feature_df)
-            elif len(X_test[feature].unique()) > 2:
-                ohe = OneHotEncoder()
-                encoded_feature = ohe.fit_transform(X_test[[feature]]).toarray()
-                encoded_feature_df = pd.DataFrame(encoded_feature, columns = [feature+"_"+X_test[feature].unique()[i] for i in range(len(X_test[feature].unique()))])
-                test_onehot_encoded_features.append(encoded_feature_df)
+        if len(categorical_without_target) > 0:
+            # encode categorical features of test set
+            for feature in categorical_without_target:
+                if len(X_test[feature].unique()) == 2:
+                    lb = LabelBinarizer()
+                    encoded_feature = lb.fit_transform(X_test[feature])
+                    encoded_feature_df = pd.DataFrame(encoded_feature, columns=[feature])
+                    test_binary_encoded_features.append(encoded_feature_df)
+                elif len(X_test[feature].unique()) > 2:
+                    ohe = OneHotEncoder()
+                    encoded_feature = ohe.fit_transform(X_test[[feature]]).toarray()
+                    encoded_feature_df = pd.DataFrame(encoded_feature, columns = [feature+"_"+X_test[feature].unique()[i] for i in range(len(X_test[feature].unique()))])
+                    test_onehot_encoded_features.append(encoded_feature_df)
 
-        X_test = X_test.drop(columns=categorical_without_target)
-        test_binary_encoded_features_df = pd.concat(test_binary_encoded_features, axis=1)
-        test_onehot_encoded_features_df = pd.concat(test_onehot_encoded_features, axis=1)
-        X_test = pd.concat([test_binary_encoded_features_df.reset_index(drop=True), test_onehot_encoded_features_df.reset_index(drop=True), X_test.reset_index(drop=True)], axis=1)
-        test_df_encoded = pd.concat([X_test_df_identifier.reset_index(drop=True), X_test.reset_index(drop=True), y_test.reset_index(drop=True)], axis=1)
+            X_test = X_test.drop(columns=categorical_without_target)
+            test_binary_encoded_features_df = pd.concat(test_binary_encoded_features, axis=1)
+            test_onehot_encoded_features_df = pd.concat(test_onehot_encoded_features, axis=1)
+            X_test = pd.concat([test_binary_encoded_features_df.reset_index(drop=True), test_onehot_encoded_features_df.reset_index(drop=True), X_test.reset_index(drop=True)], axis=1)
+            test_df_encoded = pd.concat([X_test_df_identifier.reset_index(drop=True), X_test.reset_index(drop=True), y_test.reset_index(drop=True)], axis=1)
+        
+        else:
+            test_df_encoded = pd.DataFrame()
 
         # test set into a numpy array
         X_test_continuous = X_test.values
@@ -862,6 +871,8 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
                     color=train_df_reduced[target],
                     title=f'2D PCA plot (2-component Explained Variance: {twopca_train_explained_variance:.2f}%, Total Components: {components}, Total Explained Variance: {total_train_explained_variance:.2f}%)')
                 
+                train_plot_2d.update_traces(marker=dict(opacity=1, line=dict(width=1, color='Black')) ,selector=dict(mode='markers'))
+
                 # for i, feature in enumerate(continuous):
                 #     train_plot_2d.add_shape(
                 #         type='line',
@@ -892,6 +903,8 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
                     title=f'3D PCA plot (3-component Explained Variance: {threepca_train_explained_variance:.2f}%, Total Components: {components}, Total Explained Variance: {total_train_explained_variance:.2f}%)',
                     labels={'0': 'PC1', '1': 'PC2', '2': 'PC3'})
                 
+                train_plot_3d.update_traces(marker=dict(opacity=1, line=dict(width=1, color='Black')) ,selector=dict(mode='markers'))
+
                 train_plot_3d.show()
             
             # multi-dimensional pca plot
@@ -940,6 +953,7 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
             # 2-dimensional mds plot
             if plot_type == "2d":
                 train_plot_2d = px.scatter(X_train_continuous_tranformed[:, 0:2], x=0, y=1, color=train_df_reduced[target], title=f'2D MDS plot:')
+                train_plot_2d.update_traces(marker=dict(opacity=1, line=dict(width=1, color='Black')) ,selector=dict(mode='markers'))
                 train_plot_2d.show()
             
             elif plot_type == "3d":
@@ -952,6 +966,7 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
                     title=f'3D MDS plot:',
                     labels={'0': 'MD1', '1': 'MD2', '2': 'MD3'})
                 
+                train_plot_3d.update_traces(marker=dict(opacity=1, line=dict(width=1, color='Black')) ,selector=dict(mode='markers'))
                 train_plot_3d.show()
             
             # multi-dimensional mds plot
@@ -1003,6 +1018,7 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
             # 2-dimensional tsne plot
             if plot_type == "2d":
                 train_plot_2d = px.scatter(X_train_continuous_tranformed[:, 0:2], x=0, y=1, color=train_df_reduced[target], title=f'2D t-SNE plot (perplexity {perplexity}):')
+                train_plot_2d.update_traces(marker=dict(opacity=1, line=dict(width=1, color='Black')) ,selector=dict(mode='markers'))
                 train_plot_2d.show()
             
             elif plot_type == "3d":
@@ -1015,6 +1031,7 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
                     title=f'3D t-SNE plot (perplexity {perplexity}):',
                     labels={'0': 'SNE1', '1': 'SNE2', '2': 'SNE3'})
                 
+                train_plot_3d.update_traces(marker=dict(opacity=1, line=dict(width=1, color='Black')) ,selector=dict(mode='markers'))
                 train_plot_3d.show()
             
             # multi-dimensional tsne plot
@@ -1072,6 +1089,8 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
                     X_train_continuous_tranformed[:, 0:2], x=0, y=1,
                     color=train_df_reduced[target],
                     title=f'2D UMAP plot (neighbors: {neighbors}, distance: {min_distance}, metric: {metric}):')
+                
+                train_plot_2d.update_traces(marker=dict(opacity=1, line=dict(width=1, color='Black')) ,selector=dict(mode='markers'))
                 train_plot_2d.show()
             
             elif plot_type == "3d":
@@ -1084,6 +1103,7 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
                     title=f'3D UMAP plot (neighbors: {neighbors}, distance: {min_distance}, metric: {metric}):',
                     labels={'0': 'UMAP1', '1': 'UMAP2', '2': 'UMAP3'})
                 
+                train_plot_3d.update_traces(marker=dict(opacity=1, line=dict(width=1, color='Black')) ,selector=dict(mode='markers'))
                 train_plot_3d.show()
             
             # multi-dimensional umap plot
@@ -1248,7 +1268,7 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
         label_encoder = LabelEncoder()
         true_labels = label_encoder.fit_transform(true_label_names)
 
-        # function that creates a 2-dimensional cluster plot
+        # function that creates a 2-dimensional clusterplot
         def plot_cluster_2d(algorithm, algorithm_name):
             
             column_labels = ["Component_"+str(i+1) for i in range(2)]
