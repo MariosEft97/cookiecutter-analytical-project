@@ -1189,6 +1189,11 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
             clusters (int): number of clusters to retain in the analysis
             initializations (int): number of time the k-means algorithm will be run with different centroid seeds
             random_state (int): determines random number generation for centroid initialization (default=None)
+        Hierarchical:
+            clusters (int): number of clusters to retain in the analysis
+        DBSCAN:
+            epsilon (float): maximum distance between two samples for one to be considered as in the neighborhood of the other
+            minimum_samples (int): number of samples (or total weight) in a neighborhood for a point to be considered as a core point (default=5)
            
     Returns:
         cluster_df (pd.DataFrame): data structure with loaded data

@@ -25,8 +25,12 @@ def feature_selection(df: pd.DataFrame, identifier: list, target: str, method: s
         
         **kwargs:
             REF:
-                estimator (str): estimator that assigns weights to the features (accepts: tree, logistic, svc, knn, bagging, forest, adaboost) 
+                estimator (str): estimator that assigns weights to the features (accepts: Tree, Logistic, linearSVC, Forest, AdaBoost) 
                 selected_features_number (int): number of features to select, if None (default) selects half of the features
+            Boruta:
+                estimator (str): estimator that assigns weights to the features (accepts: Forest)
+                random_state (int): determines random number generation (default=None)
+
 
     
     Returns:
@@ -116,6 +120,7 @@ def feature_selection(df: pd.DataFrame, identifier: list, target: str, method: s
             X_new_df = pd.DataFrame(X_new, columns=selected_features)
             feature_selection_df = pd.concat([df[identifier[0]].reset_index(drop=True), X_new_df.reset_index(drop=True), y.reset_index(drop=True)], axis=1)
             return feature_selection_df
+
 
 
             
