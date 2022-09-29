@@ -33,15 +33,24 @@ def data_load(folder: str, filename: str) -> pd.DataFrame:
     
     else:
         filepath = os.path.join(folder, filename)
-            
+        
+        # read xlsx files
         if filepath.endswith('.xlsx'):
             df = pd.read_excel(filepath)
+        
+        # read csv files
         elif filepath.endswith('.csv'):
             df = pd.read_csv(filepath)
+        
+        # read txt files
         elif filepath.endswith('.txt'):
             df = pd.read_table(filepath)
+        
+        # read json files
         elif filepath.endswith('.json'):
             df = pd.read_json(filepath)
+        
+        # error message when data type is not supported
         else:
             print(f"Error in {filename}")
             print("File extension is not correct or not supported.")
@@ -83,9 +92,10 @@ def data_info(df: pd.DataFrame, threshold: int=20) -> list:
         raise TypeError(error_message)
 
     else:    
-        # Number of entries and features
-        
+
+        # number of rows in the dataframe        
         entry_num = len(df)
+        # number of columns in the dataframe
         feature_num = len(df.columns)
         
         print("DIMENSIONS:")
@@ -95,14 +105,15 @@ def data_info(df: pd.DataFrame, threshold: int=20) -> list:
         print(100*"-")
         print("\n")
             
-        # Categorical and Continuous features
-        
+        # list to append categorical features
         categorical = []
+        # list to append continuous features
         continuous = []
+        # list to append id features (usually only one feature is appended)
         identifier = []
 
+        # data structure wih categorical features' unique values to be printed in a tabulated format
         unique_values = []
-        continuous_statistics = []
 
         columns = list(df.columns)
 
@@ -116,6 +127,20 @@ def data_info(df: pd.DataFrame, threshold: int=20) -> list:
         
         for column in categorical:
             unique_values.append([column, df.dtypes[column], df[column].value_counts().sort_index(ascending=True).to_dict()])
+        
+        print(f"CATEGORICAL FEATURES:")
+        print(100*"-")
+        
+        if len(categorical)>=1:
+            print(tabulate(unique_values, headers=["Features", "Data Type", "Categories & Counts"]))
+        else:
+            print("There are no categorical features in the dataset.")
+        
+        print(100*"-")
+        print("\n")
+
+        # data structure wih continuous features' descriptive statistics to be printed in a tabulated format
+        continuous_statistics = []
         
         # continuous_statistics = round(df.describe().T, 3)
         # continuous_statistics.insert(0, "Data Type", df.dtypes, True)
@@ -136,17 +161,6 @@ def data_info(df: pd.DataFrame, threshold: int=20) -> list:
                     ]
                     )
         
-        print(f"CATEGORICAL FEATURES:")
-        print(100*"-")
-        
-        if len(categorical)>=1:
-            print(tabulate(unique_values, headers=["Features", "Data Type", "Categories & Counts"]))
-        else:
-            print("There are no categorical features in the dataset.")
-        
-        print(100*"-")
-        print("\n")
-        
         print(f"CONTINUOUS FEATURES:")
         print(100*"-")
         # display(continuous_statistics)
@@ -154,10 +168,11 @@ def data_info(df: pd.DataFrame, threshold: int=20) -> list:
         print(100*"-")
         print("\n")
 
-        # Missing data
-        
+        # missing data summary
         missing_data = df.isnull().sum()
+        # missing data per feature dictionary
         missing_data_dict = dict(missing_data)
+        # data structures to devide features with/without missing values
         with_na = []
         without_na = []
         
@@ -186,8 +201,7 @@ def data_info(df: pd.DataFrame, threshold: int=20) -> list:
             print(100*"-")
             print("\n")
 
-        # Duplicate values
-
+        # duplicate values
         print("DUPLICATE VALUES:")
         print(100*"-")
 

@@ -1,5 +1,7 @@
 # LOAD PACKAGES
 import sys
+
+from matplotlib.pyplot import ylabel
 sys.path.append(r"C:\Users\35799\Desktop\cookiecutter-analytical-project\biolizard-internship-marios\src")
 import warnings
 warnings.filterwarnings('ignore')
@@ -16,6 +18,7 @@ from imblearn.under_sampling import RandomUnderSampler
 from tabulate import tabulate
 from IPython.display import display
 import plotly.figure_factory as ff
+import plotly.express as px
 
 ### DATA SPLIT FUNCTION ###
 def data_split(df: pd.DataFrame, target: str, method: str="tt", train_proportion: float=0.8, validation_proportion:float=0.25, stratify: str=True, random_state: int=None) -> pd.DataFrame:
@@ -25,10 +28,10 @@ def data_split(df: pd.DataFrame, target: str, method: str="tt", train_proportion
 
     Parameters:
         df (Pandas DataFrame): data structure with loaded data
-        target (str): target variable
+        target (str): target feature
         method (str): split method (tt: train-test, tvt: train-validation-test, default=tt)
         train_proportion (float): fraction of data to be used for training (0-1, default=0.8)
-        validation_proportion (float): fraction of data to be used for validation (0-1, default=0.25)
+        validation_proportion (float): fraction of training data to be used for validation (0-1, default=0.25)
         stratify (bool): stratified split (True or False, default=True)
         random_state (int): random state value (default=None)
 
@@ -173,9 +176,11 @@ def treat_nan(X_train: pd.DataFrame, y_train: pd.DataFrame, X_test: pd.DataFrame
         raise TypeError(error_message)
 
     else:
+        
         # merge predictor features with target feature
         train_df = pd.concat([X_train, y_train], axis=1)
         test_df = pd.concat([X_test, y_test], axis=1)
+        
         # copies of train and test sets
         train_treat_na = train_df.copy(deep=True)
         test_treat_na = test_df.copy(deep=True)
@@ -360,6 +365,7 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
         X_test_df_continuous = X_test[continuous]
         y_test = test_df[target]
 
+        # Isolation Forest
         if method == "if":
             iso_train = IsolationForest(contamination=outlier_fraction)
             
@@ -384,7 +390,7 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
             mask_test = yhat_test != -1
             X_test_df_identifier, X_test_df_categorical, X_test_df_continuous, y_test = X_test_df_identifier[mask_test], X_test_df_categorical[mask_test], X_test_df_continuous[mask_test], y_test[mask_test]
             
-
+        # Minimum Covariance Distance
         elif method == "mcd":
             mcd = EllipticEnvelope(contamination=outlier_fraction)
             
@@ -405,7 +411,8 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
             # select all rows that are not outliers
             mask_test = yhat_test != -1
             X_test_df_identifier, X_test_df_categorical, X_test_df_continuous, y_test = X_test_df_identifier[mask_test], X_test_df_categorical[mask_test], X_test_df_continuous[mask_test], y_test[mask_test]
-            
+        
+        # Local Outlier Factor
         elif method == "lof":
             lof = LocalOutlierFactor()
             
@@ -426,7 +433,8 @@ def treat_outliers(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: li
             # select all rows that are not outliers
             mask_test = yhat_test != -1
             X_test_df_identifier, X_test_df_categorical, X_test_df_continuous, y_test = X_test_df_identifier[mask_test], X_test_df_categorical[mask_test], X_test_df_continuous[mask_test], y_test[mask_test]
-            
+        
+        # One-class Support Vector Machines
         elif method == "svm":
             svm = OneClassSVM(nu=outlier_fraction)
             
@@ -506,19 +514,30 @@ def target_balance_check(train_df: pd.DataFrame, target: str, imbalance_fraction
         level_percentages = []
         
         for key, value in train_df[target].value_counts().sort_index(ascending=True).to_dict().items():
-            target_feature_info.append([key, value, round(value/total_count, 3)])
+            target_feature_info.append([key, value, round(value/total_count, 3)*100])
             level_percentages.append(value/total_count)
         
         # results are displayed as a plot
         if graphic == True:
-            target_feature_info.insert(0, ["Target Feature Levels", "Counts", "Percentages"])
+            target_feature_info.insert(0, ["Target Feature Levels", "Counts", "Percentages (%)"])
             fig = ff.create_table(target_feature_info)
             fig.show()
         
         # results are printed as a table
         elif graphic == False:
-            print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages"]))
+            print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages (%)"]))
 
+        # # bar charts with results
+        # feature_counts = train_df[target].value_counts().reset_index()
+        # feature_counts["Percentages"] = feature_counts[target]/sum(feature_counts[target])
+        # feature_counts.rename(columns={"index": "Feature Levels", target: "Counts"}, inplace=True)
+        
+        # fig = px.histogram(feature_counts, x="Feature Levels", y="Counts", barmode="group")
+        # fig.show()
+        
+        # fig = px.histogram(feature_counts, x="Feature Levels", y="Percentages", barmode="group")
+        # fig.show()
+        
         # data structures for deciding whether dataset is balanced or unbalanced
         level_percentage_diff = list(np.diff(level_percentages))
         level_percentage_diff_sorted = sorted(level_percentage_diff)
@@ -597,19 +616,19 @@ def sampler(train_df: pd.DataFrame, target: str, method: str, sampling_ratios: d
             target_feature_info = []
             level_percentages = []
             for key, value in y_train_rus.value_counts().sort_index(ascending=True).to_dict().items():
-                target_feature_info.append([key, value, round(value/total_count, 3)])
+                target_feature_info.append([key, value, round(value/total_count, 3)*100])
                 level_percentages.append(value/total_count)
             print("Balanced target feature (undersampling):")
             
             # results are displayed as a plot
             if graphic == True:
-                target_feature_info.insert(0, ["Target Feature Levels", "Counts", "Percentages"])
+                target_feature_info.insert(0, ["Target Feature Levels", "Counts", "Percentages (%)"])
                 fig = ff.create_table(target_feature_info)
                 fig.show()
             
             # results are printed as a table
             elif graphic == False:
-                print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages"]))
+                print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages (%)"]))
 
             # merge into one DataFrame
             train_df_resampled = pd.concat([X_train_rus, y_train_rus], axis=1)
@@ -626,19 +645,19 @@ def sampler(train_df: pd.DataFrame, target: str, method: str, sampling_ratios: d
             target_feature_info = []
             level_percentages = []
             for key, value in y_train_ros.value_counts().sort_index(ascending=True).to_dict().items():
-                target_feature_info.append([key, value, round(value/total_count, 3)])
+                target_feature_info.append([key, value, round(value/total_count, 3)*100])
                 level_percentages.append(value/total_count)
             print("Balanced target feature (oversampling):")
             
             # results are displayed as a plot
             if graphic == True:
-                target_feature_info.insert(0, ["Target Feature Levels", "Counts", "Percentages"])
+                target_feature_info.insert(0, ["Target Feature Levels", "Counts", "Percentages (%)"])
                 fig = ff.create_table(target_feature_info)
                 fig.show()
             
             # results are printed as a table
             elif graphic == False:
-                print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages"]))
+                print(tabulate(target_feature_info, headers=["Target Feature Levels", "Counts", "Percentages (%)"]))
 
             # merge into one DataFrame
             train_df_resampled = pd.concat([X_train_ros, y_train_ros], axis=1)

@@ -695,11 +695,18 @@ def dimensionality_reduction(train_df: pd.DataFrame, test_df: pd.DataFrame, iden
         plot_type (str): type of plot to display (2d: 2-dimensional plot, 3d: 3-dimensional plot, multi: multi-dimensional plot)
         
         **kwargs:
-            components (int): number of components to retain in the analysis (applies in PCA, MDS, t-SNE and UMAP)
-            perplexity (float): number of nearest neighbors (5-50, default=30, applies in t-SNE)
-            neighbors (int): controls how UMAP balances local versus global structure in the data (low/high values favor local/global structure, default=15)
-            min_distance (float): controls how tightly UMAP is allowed to pack points together (0-0.99, default=0.1)
-            metric (str): controls how distance is computed in UMAP (euclidean, manhattan, chebyshev, minkowski, mahalanobis, cosine, correlation)
+            PCA:
+                components (int): number of components to retain in the analysis
+            MDS:
+                components (int): number of components to retain in the analysis
+            t-SNE:
+                components (int): number of components to retain in the analysis
+                perplexity (float): number of nearest neighbors (5-50, default=30)
+            UMAP:
+                components (int): number of components to retain in the analysis
+                neighbors (int): controls how UMAP balances local versus global structure in the data (low/high values favor local/global structure, default=15)
+                min_distance (float): controls how tightly UMAP is allowed to pack points together (0-0.99, default=0.1)
+                metric (str): controls how distance is computed in UMAP (euclidean, manhattan, chebyshev, minkowski, mahalanobis, cosine, correlation)
     
     Returns:
         train_df_encoded (Pandas DataFrame): data structure with train sample before dimensionality reduction (categorical variables encoded)
@@ -1241,6 +1248,7 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
         label_encoder = LabelEncoder()
         true_labels = label_encoder.fit_transform(true_label_names)
 
+        # function that creates a 2-dimensional cluster plot
         def plot_cluster_2d(algorithm, algorithm_name):
             
             column_labels = ["Component_"+str(i+1) for i in range(2)]
@@ -1280,6 +1288,7 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
 
             return cluster_df
         
+        # function that creates a 3-dimensional cluster plot
         def plot_cluster_3d(algorithm, algorithm_name):
 
             column_labels = ["Component_"+str(i+1) for i in range(3)]
