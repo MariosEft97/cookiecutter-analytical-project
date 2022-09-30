@@ -1264,9 +1264,10 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
         X = input_df.drop(columns=[identifier[0], target]).values
         X = np.array(X)
 
-        true_label_names = np.array(input_df.loc[:,[target]].values)
+        true_labels = np.array(input_df.loc[:,[target]].values)
         label_encoder = LabelEncoder()
-        true_labels = label_encoder.fit_transform(true_label_names)
+        encoded_labels = label_encoder.fit_transform(true_labels)
+        label_dict = {i: level for (i, level) in enumerate(label_encoder.fit(true_labels).classes_)}
 
         # function that creates a 2-dimensional clusterplot
         def plot_cluster_2d(algorithm, algorithm_name):
@@ -1274,10 +1275,9 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
             column_labels = ["Component_"+str(i+1) for i in range(2)]
             cluster_df = pd.DataFrame(X, columns=column_labels, index=input_df.index)
             cluster_df["Predicted_Class"] = algorithm.labels_
-            label_dict = {i: level for i, level in enumerate(sorted(df[target].unique()))}
             cluster_df["Predicted_Labels"] = cluster_df["Predicted_Class"].replace(label_dict)
-            cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
-            cluster_df["ID_REF"] = input_df[identifier[0]]
+            cluster_df["True_Labels"] = label_encoder.inverse_transform(encoded_labels)
+            cluster_df[identifier[0]] = input_df[identifier[0]]
 
             fig = px.scatter(
                 cluster_df,
@@ -1289,7 +1289,7 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
                 hover_data={
                     "Component_1":False,
                     "Component_2":False,
-                    "ID_REF":True,
+                    identifier[0]:True,
                     "Predicted_Class":False,
                     "Predicted_Labels":True,
                     "True_Labels":True
@@ -1314,10 +1314,9 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
             column_labels = ["Component_"+str(i+1) for i in range(3)]
             cluster_df = pd.DataFrame(X, columns=column_labels, index=input_df.index)
             cluster_df["Predicted_Class"] = algorithm.labels_
-            label_dict = {i: level for i, level in enumerate(sorted(df[target].unique()))}
             cluster_df["Predicted_Labels"] = cluster_df["Predicted_Class"].replace(label_dict)
-            cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
-            cluster_df["ID_REF"] = input_df[identifier[0]]
+            cluster_df["True_Labels"] = label_encoder.inverse_transform(encoded_labels)
+            cluster_df[identifier[0]] = input_df[identifier[0]]
 
             fig = px.scatter_3d(
                 cluster_df,
@@ -1331,7 +1330,7 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
                     "Component_1":False,
                     "Component_2":False,
                     "Component_3":False,
-                    "ID_REF":True,
+                    identifier[0]:True,
                     "Predicted_Class":False,
                     "Predicted_Labels":True,
                     "True_Labels":True
@@ -1360,7 +1359,7 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
             kmeans.fit(X)
             
             silhouette = silhouette_score(X, kmeans.labels_)
-            ari = adjusted_rand_score(true_labels, kmeans.labels_)
+            ari = adjusted_rand_score(encoded_labels, kmeans.labels_)
             
             if plot_type == "2d":
                 cluster_df = plot_cluster_2d(algorithm=kmeans, algorithm_name="K-Means")
@@ -1378,7 +1377,7 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
             hierarchical.fit(X)
 
             silhouette = silhouette_score(X, hierarchical.labels_)
-            ari = adjusted_rand_score(true_labels, hierarchical.labels_)
+            ari = adjusted_rand_score(encoded_labels, hierarchical.labels_)
 
             if plot_type == "2d":
                 cluster_df = plot_cluster_2d(algorithm=hierarchical, algorithm_name="Hierarchical")
@@ -1397,17 +1396,16 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
             dbscan.fit(X)
 
             # silhouette = silhouette_score(X, dbscan.labels_)
-            ari = adjusted_rand_score(true_labels, dbscan.labels_)
+            ari = adjusted_rand_score(encoded_labels, dbscan.labels_)
 
             if plot_type == "2d":
 
                 column_labels = ["Component_"+str(i+1) for i in range(2)]
                 cluster_df = pd.DataFrame(X, columns=column_labels, index=input_df.index)
                 cluster_df["Predicted_Class"] = dbscan.labels_
-                label_dict = {i: level for i, level in enumerate(sorted(df[target].unique()))}
                 cluster_df["Predicted_Labels"] = cluster_df["Predicted_Class"].replace(label_dict)
-                cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
-                cluster_df["ID_REF"] = input_df[identifier[0]]
+                cluster_df["True_Labels"] = label_encoder.inverse_transform(encoded_labels)
+                cluster_df[identifier[0]] = input_df[identifier[0]]
 
                 fig = px.scatter(
                     cluster_df,
@@ -1419,7 +1417,7 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
                     hover_data={
                         "Component_1":False,
                         "Component_2":False,
-                        "ID_REF":True,
+                        identifier[0]:True,
                         "Predicted_Class":False,
                         "Predicted_Labels":True,
                         "True_Labels":True
@@ -1441,10 +1439,9 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
                 column_labels = ["Component_"+str(i+1) for i in range(3)]
                 cluster_df = pd.DataFrame(X, columns=column_labels, index=input_df.index)
                 cluster_df["Predicted_Class"] = dbscan.labels_
-                label_dict = {i: level for i, level in enumerate(sorted(df[target].unique()))}
                 cluster_df["Predicted_Labels"] = cluster_df["Predicted_Class"].replace(label_dict)
-                cluster_df["True_Labels"] = label_encoder.inverse_transform(true_labels)
-                cluster_df["ID_REF"] = input_df[identifier[0]]
+                cluster_df["True_Labels"] = label_encoder.inverse_transform(encoded_labels)
+                cluster_df[identifier[0]] = input_df[identifier[0]]
 
                 fig = px.scatter_3d(
                     cluster_df,
@@ -1458,7 +1455,7 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
                         "Component_1":False,
                         "Component_2":False,
                         "Component_3":False,
-                        "ID_REF":True,
+                        identifier[0]:True,
                         "Predicted_Class":False,
                         "Predicted_Labels":True,
                         "True_Labels":True

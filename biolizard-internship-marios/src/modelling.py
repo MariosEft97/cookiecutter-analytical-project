@@ -83,7 +83,6 @@ def feature_selection(df: pd.DataFrame, identifier: list, target: str, method: s
             selected_features = rfe.get_feature_names_out(X.columns)
             X_new_df = pd.DataFrame(X_new, columns=selected_features)
             feature_selection_df = pd.concat([df[identifier[0]].reset_index(drop=True), X_new_df.reset_index(drop=True), y.reset_index(drop=True)], axis=1)
-            return feature_selection_df
 
         elif method == "Boruta":
             # BorutaPy accepts only numpy arrays
@@ -100,7 +99,6 @@ def feature_selection(df: pd.DataFrame, identifier: list, target: str, method: s
             selected_features = X.loc[:, boruta.support_].columns
             X_new_df = pd.DataFrame(X_new, columns=selected_features)
             feature_selection_df = pd.concat([df[identifier[0]].reset_index(drop=True), X_new_df.reset_index(drop=True), y.reset_index(drop=True)], axis=1)
-            return feature_selection_df
         
         elif method == "L1":
             # estimators
@@ -119,7 +117,17 @@ def feature_selection(df: pd.DataFrame, identifier: list, target: str, method: s
             selected_features = X.loc[:, l1.get_support()].columns
             X_new_df = pd.DataFrame(X_new, columns=selected_features)
             feature_selection_df = pd.concat([df[identifier[0]].reset_index(drop=True), X_new_df.reset_index(drop=True), y.reset_index(drop=True)], axis=1)
-            return feature_selection_df
+
+
+        print(f"Initial dataset dimensions:")
+        print(f"Rows: {df.shape[0]}")
+        print(f"Columns: {df.shape[1]}")
+        print("\n")
+        print(f"Dataset dimensions after feature selection:")
+        print(f"Rows: {feature_selection_df.shape[0]}")
+        print(f"Columns: {feature_selection_df.shape[1]}")
+
+        return feature_selection_df
 
 
 
