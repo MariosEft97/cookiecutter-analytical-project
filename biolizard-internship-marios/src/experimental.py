@@ -233,7 +233,194 @@ def box_plot_v2(df: pd.DataFrame, features: list, categorical: list) -> None:
 
 
 
+### BINARY CLASSIFICATION CODE ###
 
+# import os
+
+# import pandas as pd
+# import numpy as np
+
+# from tqdm import tqdm
+
+# import seaborn as sns
+# import matplotlib.pyplot as plt
+
+# from sklearn.linear_model import LogisticRegression, SGDClassifier
+# from sklearn.neighbors import KNeighborsClassifier
+# from sklearn.naive_bayes import GaussianNB, BernoulliNB
+# from sklearn.svm import SVC, LinearSVC
+# from sklearn.tree import DecisionTreeClassifier
+# from sklearn.ensemble import RandomForestClassifier, BaggingClassifier
+# from xgboost import XGBClassifier
+# from sklearn.ensemble import AdaBoostClassifier, GradientBoostingClassifier
+# from sklearn.neural_network import MLPClassifier
+
+# from sklearn.metrics import *
+# from sklearn.model_selection import cross_val_score
+# from sklearn.model_selection import GridSearchCV
+# from sklearn.model_selection import train_test_split
+# import joblib
+# import re
+# from sklearn.preprocessing import LabelBinarizer
+
+# lb = LabelBinarizer()
+# encoded_train_target = lb.fit_transform(rfe_df['Diagnosis'])
+# encoded_test_target = lb.transform(test_df['Diagnosis'])
+
+# X_train = rfe_df.drop(columns=['ID', 'Diagnosis'])
+# y_train = pd.DataFrame(encoded_train_target, columns=["Diagnosis"])
+
+# X_test = test_df[X_train.columns]
+# y_test = pd.DataFrame(encoded_test_target, columns=["Diagnosis"])
+
+# label_dict = {"B": 0, "M": 1}
+
+# X_train = rfe_df.drop(columns=['ID', 'Diagnosis'])
+# y_train = rfe_df[['Diagnosis']].replace(label_dict)
+
+# X_test = test_df[X_train.columns]
+# y_test = test_df[['Diagnosis']].replace(label_dict)
+
+# models = []
+# models.append(['LogisticRegression', LogisticRegression(random_state=0)])
+# models.append(['SVM', SVC(random_state=0)])
+# models.append(['LinearSVM', LinearSVC(random_state=0)])
+# models.append(['SGD', SGDClassifier(random_state=0)])
+# models.append(['K-NearestNeigbors', KNeighborsClassifier()])
+# models.append(['GaussianNB', GaussianNB()])
+# models.append(['DecisionTree', DecisionTreeClassifier(random_state=0)])
+# models.append(['Bagging', BaggingClassifier(random_state=0)])
+# models.append(['RandomForest', RandomForestClassifier(random_state=0)])
+# models.append(['AdaBoost', AdaBoostClassifier(random_state=0)])
+# models.append(['GradientBoosting', GradientBoostingClassifier(random_state=0)])
+# models.append(['XGBoost', XGBClassifier(random_state=0)])
+# models.append(['MLP', MLPClassifier(random_state=0)])
+
+# lst_1 = []
+
+# for i, m in enumerate(tqdm(range(len(models)))):
+#     lst_2 = []
+#     model = models[m][1]
+#     model.fit(X_train, y_train)
+#     y_pred = model.predict(X_test)
+    
+#     cm = confusion_matrix(y_test, y_pred)
+#     cm_df = pd.DataFrame(cm, index=sorted(train_df["Diagnosis"].unique()), columns=sorted(train_df["Diagnosis"].unique()))
+#     accuracies = cross_val_score(estimator=model, X=X_train, y=y_train, cv=10)
+
+#     recall = recall_score(y_test, y_pred)
+#     precision = precision_score(y_test, y_pred)
+#     accuracy = accuracy_score(y_test, y_pred)
+    
+#     print(f'{i}) {models[m][0]}:')
+#     print('-'*(len(models[m][0])+5))
+#     print("Confusion Matrix:")
+#     print(cm_df)
+#     print(f'Accuracy: {round(accuracy, 3)}')
+#     print(f'Recall: {round(recall, 3)}')
+#     print(f'Presicion: {round(precision, 3)}')
+#     print('-'*100)
+   
+#     lst_2.append(models[m][0])
+#     lst_2.append(cm_df.iloc[0][0])
+#     lst_2.append(cm_df.iloc[0][1])
+#     lst_2.append(cm_df.iloc[1][0])
+#     lst_2.append(cm_df.iloc[1][1])
+#     lst_2.append(accuracy)
+#     lst_2.append(recall)
+#     lst_2.append(precision)
+#     lst_1.append(lst_2)
+
+# metrics_df = pd.DataFrame(lst_1, columns=['Algorithm','TN', 'FN', 'FP', 'TP', 'Accuracy','Recall', 'Precision'])
+# round(metrics_df, 3)
+
+# models.append(['Logistic Regression', LogisticRegression(random_state=0)])
+# models.append(['SVM', SVC(random_state=0)])
+# models.append(['Linear SVM', LinearSVC(random_state=0)])
+# models.append(['SGD', SGDClassifier(random_state=0)])
+# models.append(['K-nearest Neigbors', KNeighborsClassifier()])
+# models.append(['GaussianNB', GaussianNB()])
+# models.append(['Decision Tree', DecisionTreeClassifier(random_state=0)])
+# models.append(['Bagging', BaggingClassifier(random_state=0)])
+# models.append(['Random Forest', RandomForestClassifier(random_state=0)])
+# models.append(['AdaBoost', AdaBoostClassifier(random_state=0)])
+# models.append(['XGBoost', GradientBoostingClassifier(random_state=0)])
+# models.append(['MLP', MLPClassifier(random_state=0)])
+
+# search_space = [
+#     (LogisticRegression(), [{'penalty':['l1', 'l2', 'elasticnet', 'none'], 'class_weight':['balanced', None], 'solver':["saga"], 'random_state':[0]}]),
+#     (SVC(), [{'kernel': ['linear', 'poly', 'rbf', 'sigmoid'], 'class_weight':['balanced', None], 'random_state':[0]}]),
+#     (LinearSVC(), [{'penalty':['l1', 'l2'], 'class_weight':['balanced', None], 'random_state':[0]}]),
+#     (SGDClassifier(), [{'loss': ['hinge', 'log_loss', 'log', 'modified_huber', 'squared_hinge', 'perceptron'], 'penalty':['l1', 'l2', 'elasticnet'], 'learning_rate':['optimal', 'constant', 'invscaling'], 'random_state':[0]}]),
+#     (KNeighborsClassifier(), [{'n_neighbors':[5, 10, 15], 'weights':['uniform', 'distance'], 'algorithm':['auto', 'ball_tree', 'kd_tree', 'brute']}]),
+#     (GaussianNB(), [{'var_smoothing':[1e-8, 1e-9, 1e-10]}]),
+#     (DecisionTreeClassifier(), [{'criterion':['gini', 'entropy', 'log_loss'], 'splitter': ['best', 'random'], 'class_weight':['balanced', None], 'random_state':[0]}]),
+#     (BaggingClassifier(), [{'n_estimators':[5, 10, 15],  'random_state':[0]}]),
+#     (RandomForestClassifier(), [{'n_estimators':[50, 100, 150], 'criterion':['gini', 'entropy', 'log_loss'], 'class_weight':['balanced', None], 'random_state':[0]}]),
+#     (AdaBoostClassifier(), [{'n_estimators':[25, 50, 75], 'learning_rate':[0.5, 1.0, 1.5], 'algorithm':['SAMME', 'SAMME.R'], 'random_state':[0]}]),
+#     (GradientBoostingClassifier(), [{'learning_rate':[0.05, 0.1, 0.15], "loss":['log_loss','deviance', 'exponential'], 'n_estimators':[50, 100, 150], 'criterion':['friedman_mse', 'squared_error', 'mse'], 'random_state':[0]}]),
+#     (XGBClassifier(), [{'learning_rate':[0.1, 0.3, 0.5], 'n_estimators':[50, 100, 150], 'sampling_method':['uniform', 'subsample', 'gradient_based'], 'lambda':[0, 1, 2], 'alpha':[0, 1, 2], 'random_state':[0]}])
+#     ]
+
+# removed MLP from grid search because it takes too much time and has lower optimal accuracy than other classifiers
+# (MLPClassifier(), [{'hidden_layer_sizes': [(50,), (100,), (150,)], 'activation':['identity', 'logistic', 'tanh', 'relu'], 'solver':['lbfgs', 'sgd', 'adam'], 'alpha': [0.0001, 0.0002, 0.0003], 'learning_rate':['optimal', 'constant', 'invscaling'], 'learning_rate_init': [0.0005, 0.001, 0.002], 'random_state':[0]}])
+
+
+# for i, (j, k) in enumerate(tqdm(search_space)):
+#     grid = GridSearchCV(estimator=j, param_grid=k, scoring='accuracy', cv = 10)
+#     grid.fit(X_train, y_train)
+#     optimal_score = grid.best_score_
+#     optimal_hypeparameters = grid.best_params_
+#     first_bracket_position = re.search("\(", str(j)).start()
+#     print(f'{i+1}) {str(j)[0:first_bracket_position]}')
+#     print('-'*(len(str(j)[0:first_bracket_position])+5))
+#     print(f'Optimal Accuracy: {round(optimal_score*100, 3)}%')
+#     print(f'Optimal Hyperparameters: {optimal_hypeparameters}')
+#     print('-'*100)
+
+# classifier = RandomForestClassifier(**{'class_weight': None, 'criterion': 'entropy', 'n_estimators': 50, 'random_state': 0})
+# classifier.fit(X_train, y_train)
+# y_pred = classifier.predict(X_test)
+# y_prob = classifier.predict_proba(X_test)[:,1]
+# cm = confusion_matrix(y_test, y_pred)
+ 
+# recall = recall_score(y_test, y_pred)
+# precision = precision_score(y_test, y_pred)
+# accuracy = accuracy_score(y_test, y_pred)
+
+# print(classification_report(y_test, y_pred))
+# print('\n')
+# print(f'Accuracy: {round(accuracy, 3)}')
+# print(f'Recall: {round(recall, 3)}')
+# print(f'Presicion: {round(precision, 3)}')
+# print(f'ROC AUC: {round(roc_auc_score(y_test, y_prob), 3)}')
+# print('\n')
+
+# results = {"accuracy":[accuracy],"recall":[recall], "precision":[precision], "AUC":[roc_auc_score(y_test, y_prob)]}
+
+# # Visualizing Confusion Matrix
+# group_names = ["True Negative","False Positive","False Negative","True Positive"]
+# group_counts = ["{0:0.0f}".format(value) for value in cm.flatten()]
+# group_percentages = ["{0:.2%}".format(value) for value in cm.flatten()/np.sum(cm)]
+# labels = [f"{v1}\n{v2}\n{v3}" for v1, v2, v3 in zip(group_names, group_counts, group_percentages)]
+# labels = np.asarray(labels).reshape(2,2)
+# sns.heatmap(cm_df, annot=labels, fmt="", cmap="YlGnBu")
+# plt.title(label = "Confusion Matrix on test set", weight = "bold", fontsize=14)
+# plt.show()
+
+# # Roc Curve
+# false_positive_rate, true_positive_rate, thresholds = roc_curve(y_test, y_prob)
+# roc_auc = auc(false_positive_rate, true_positive_rate)
+
+# sns.set_theme(style = 'white')
+# # plt.figure(figsize = (8, 8))
+# plt.plot(false_positive_rate,true_positive_rate, color = '#b01717', label = 'AUC = %0.3f' % roc_auc)
+# plt.legend(loc = 'lower right')
+# plt.plot([0, 1], [0, 1], linestyle = '--', color = '#174ab0')
+# plt.axis('tight')
+# plt.ylabel('True Positive Rate')
+# plt.xlabel('False Positive Rate')
+# plt.show()
 
 
 
