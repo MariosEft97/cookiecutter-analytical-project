@@ -1,5 +1,6 @@
 # LOAD PACKAGES
 import sys
+from tkinter import ON
 sys.path.append(r"C:\Users\35799\Desktop\cookiecutter-analytical-project\biolizard-internship-marios\src")
 import pandas as pd
 from IPython.display import display
@@ -10,9 +11,10 @@ from datetime import datetime
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from itertools import cycle
 from sklearn.feature_selection import RFE, SelectFromModel
 from boruta import BorutaPy
-from sklearn.preprocessing import LabelBinarizer
+from sklearn.preprocessing import LabelBinarizer, LabelEncoder, label_binarize
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC, LinearSVC
@@ -21,6 +23,7 @@ from sklearn.ensemble import BaggingClassifier, RandomForestClassifier, AdaBoost
 from sklearn.naive_bayes import GaussianNB
 from xgboost import XGBClassifier
 # from sklearn.neural_network import MLPClassifier
+from sklearn.multiclass import OneVsRestClassifier
 from sklearn.metrics import *
 from sklearn.model_selection import GridSearchCV
 import plotly.express as px
@@ -196,15 +199,15 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
         # encode the target variables
         lb = LabelBinarizer()
         encoded_train_target = lb.fit_transform(train_df[target])
-        encoded_test_target = lb.transform(test_df['Diagnosis'])
+        encoded_test_target = lb.transform(test_df[target])
 
         # create train set
         X_train = train_df.drop(columns=[identifier[0], target])
-        y_train = pd.DataFrame(encoded_train_target, columns=["Diagnosis"])
+        y_train = pd.DataFrame(encoded_train_target, columns=[target])
 
         # create test set
         X_test = test_df[X_train.columns]
-        y_test = pd.DataFrame(encoded_test_target, columns=["Diagnosis"])
+        y_test = pd.DataFrame(encoded_test_target, columns=[target])
 
         # data structure with classifiers
         models = []
@@ -355,7 +358,7 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
         roc_auc = auc(false_positive_rate, true_positive_rate)
 
         # Precision-Recall curve
-        precision_, recall_, orc_thresholds = precision_recall_curve(y_test, y_prob)     
+        precision_, recall_, prc_thresholds = precision_recall_curve(y_test, y_prob)     
         
         # classification metrics
         recall = recall_score(y_test, y_pred)
@@ -376,8 +379,6 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
         print(tabulate(round(bpm_results, 3), headers='keys', tablefmt='psql'))
 
         # results = {"accuracy":[accuracy],"recall":[recall], "precision":[precision], "f1":[f1] "AUC":[roc_auc_score(y_test, y_prob)]}
-
-
 
         if interactive_visuals == False:
             
@@ -493,7 +494,350 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
 
             # prc_fig.show()
 
+            return None
 
+### MULTICLASS CLASSIFICATION FUNCTION ###
+def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, k_fold: int=10, metric: str="accuracy", save_cv_results: bool=True, interactive_visuals: bool=True) -> None:
+    
+    '''
+    The function fits different multi-class classification models, performs hyperparameter tuning and returns the best model.
+
+    Parameters:
+        df (Pandas DataFrame): data structure with loaded data
+        identifier (list): identifier features of the dataset
+        target (str): target feature
+        metric (str): metric to be used for the hyperparameter tuning (accuracy, recall, precision, default=accuracy)
+        k_fold (int): number of k-folds for cross-validation (default=10)
+        save_cv_results (bool): whether the hyperparameter tuning results should be saved (True or False, default=True)
+        interavtive_visuals (bool): if True plots are create with plotly else with seaborn and matplotlib (True or False, default=True)
+    
+    Returns:
+        None
+    '''
+
+    if not isinstance(train_df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
+    
+    if not isinstance(test_df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
+    
+    elif not isinstance(identifier, list):
+        error_message = "identifier must be specified as a list of strings"
+        raise TypeError(error_message)
+
+    elif not isinstance(target, str):
+        error_message = "target must be specified as a string"
+        raise TypeError(error_message)
+    
+    elif not isinstance(k_fold, int):
+        error_message = "k_fold must be specified as an integer value"
+        raise TypeError(error_message)
+    
+    elif not isinstance(metric, str):
+        error_message = "metric must be specified as a string\noptions: accuracy, recall or presicion"
+        raise TypeError(error_message)
+    
+    elif not isinstance(save_cv_results, bool):
+        error_message = "save_cv_results must be specified as a boolean value (True or False)"
+        raise TypeError(error_message)
+
+    else:
+
+        # encode the target variables
+        lb = LabelEncoder()
+        encoded_train_target = lb.fit_transform(train_df[target])
+        encoded_test_target = lb.transform(test_df[target])
+
+        # create train set
+        X_train = train_df.drop(columns=[identifier[0], target])
+        y_train = pd.DataFrame(encoded_train_target, columns=[target])
+
+        # create test set
+        X_test = test_df[X_train.columns]
+        y_test = pd.DataFrame(encoded_test_target, columns=[target])
+
+        # data structure with classifiers
+        models = []
+        models.append(['LogisticRegression', LogisticRegression(random_state=0)])
+        models.append(['SVM', SVC(random_state=0)])
+        models.append(['LinearSVM', LinearSVC(random_state=0)])
+        models.append(['SGD', SGDClassifier(random_state=0)])
+        models.append(['K-NearestNeigbors', KNeighborsClassifier()])
+        models.append(['GaussianNB', GaussianNB()])
+        models.append(['DecisionTree', DecisionTreeClassifier(random_state=0)])
+        models.append(['Bagging', BaggingClassifier(random_state=0)])
+        models.append(['RandomForest', RandomForestClassifier(random_state=0)])
+        models.append(['AdaBoost', AdaBoostClassifier(random_state=0)])
+        models.append(['GradientBoosting', GradientBoostingClassifier(random_state=0)])
+        models.append(['XGBoost', XGBClassifier(random_state=0)])
+        # models.append(['MLP', MLPClassifier(random_state=0)])
+
+        # check baseline performance of classifiers
+        
+        # data structure to append results for each classifier
+        lst_1 = []
+
+        for i, m in enumerate(range(len(models))):
+            lst_2 = []
+            model = models[m][1]
+            model.fit(X_train, y_train)
+            y_pred = model.predict(X_test)
+            
+            cm = confusion_matrix(y_test, y_pred)
+            cm_df = pd.DataFrame(cm, index=sorted(train_df[target].unique()), columns=sorted(train_df[target].unique()))
+            
+            recall = recall_score(y_test, y_pred, average="weighted")
+            precision = precision_score(y_test, y_pred, average="weighted")
+            accuracy = accuracy_score(y_test, y_pred)
+            f1 = f1_score(y_test, y_pred, average="weighted")
+            kappa = cohen_kappa_score(y_test, y_pred)
+
+            # print(f'{i+1}) {models[m][0]}:')
+            # print('-'*(len(models[m][0])+5))
+            # print("Confusion Matrix:")
+            # print(cm_df)
+            # print(f'Accuracy: {round(accuracy, 3)}')
+            # print(f'Recall: {round(recall, 3)}')
+            # print(f'Presicion: {round(precision, 3)}')
+            # print('-'*100)
+
+            lst_2.append(models[m][0])
+            # lst_2.append(cm_df.iloc[0][0])
+            # lst_2.append(cm_df.iloc[0][1])
+            # lst_2.append(cm_df.iloc[1][0])
+            # lst_2.append(cm_df.iloc[1][1])
+            lst_2.append(accuracy)
+            lst_2.append(recall)
+            lst_2.append(precision)
+            lst_2.append(f1)
+            lst_2.append(kappa)
+            lst_1.append(lst_2)
+        
+        baseline_performance_df = pd.DataFrame(lst_1, columns=['Algorithm', 'Accuracy', 'Recall', 'Precision', 'F1', "Cohens's kappa"])
+        print('\nBaseline Performance of Classifiers:')
+        print(tabulate(round(baseline_performance_df, 3), headers='keys', tablefmt='psql'))
+        # display(round(baseline_performance_df, 3))
+
+        # define hyperparameter search space
+        search_space = [
+            (LogisticRegression(), [{'penalty':['l1', 'l2', 'elasticnet', 'none'], 'class_weight':['balanced', None], 'solver':["saga"], 'random_state':[0]}]),
+            (SVC(), [{'kernel': ['linear', 'poly', 'rbf', 'sigmoid'], 'class_weight':['balanced', None], 'probability': [True], 'random_state':[0]}]),
+            (LinearSVC(), [{'penalty':['l1', 'l2'], 'class_weight':['balanced', None], 'random_state':[0]}]),
+            (SGDClassifier(), [{'loss': ['hinge', 'log_loss', 'log', 'modified_huber', 'squared_hinge', 'perceptron'], 'penalty':['l1', 'l2', 'elasticnet'], 'learning_rate':['optimal', 'constant', 'invscaling'], 'random_state':[0]}]),
+            (KNeighborsClassifier(), [{'n_neighbors':[5, 10, 15], 'weights':['uniform', 'distance'], 'algorithm':['auto', 'ball_tree', 'kd_tree', 'brute']}]),
+            (GaussianNB(), [{'var_smoothing':[1e-8, 1e-9, 1e-10]}]),
+            (DecisionTreeClassifier(), [{'criterion':['gini', 'entropy', 'log_loss'], 'splitter': ['best', 'random'], 'class_weight':['balanced', None], 'random_state':[0]}]),
+            (BaggingClassifier(), [{'n_estimators':[5, 10, 15],  'random_state':[0]}]),
+            (RandomForestClassifier(), [{'n_estimators':[50, 100, 150], 'criterion':['gini', 'entropy', 'log_loss'], 'class_weight':['balanced', None], 'random_state':[0]}]),
+            (AdaBoostClassifier(), [{'n_estimators':[25, 50, 75], 'learning_rate':[0.5, 1.0, 1.5], 'algorithm':['SAMME', 'SAMME.R'], 'random_state':[0]}]),
+            (GradientBoostingClassifier(), [{'learning_rate':[0.05, 0.1, 0.15], "loss":['log_loss','deviance', 'exponential'], 'n_estimators':[50, 100, 150], 'criterion':['friedman_mse', 'squared_error', 'mse'], 'random_state':[0]}]),
+            (XGBClassifier(), [{'learning_rate':[0.1, 0.3, 0.5], 'n_estimators':[50, 100, 150], 'sampling_method':['uniform', 'subsample', 'gradient_based'], 'lambda':[0, 1, 2], 'alpha':[0, 1, 2], 'random_state':[0]}])
+            ]
+    
+        # perform hyperparameter tuning using k-fold cross-validation
+        model_names = []
+        scores = []
+        hyperparameters = []
+        model_score = {}
+        model_hyperparameters = {}
+
+        for i, (j, k) in enumerate(search_space):
+            
+            grid = GridSearchCV(estimator=j, param_grid=k, scoring=metric, cv=k_fold)
+            grid.fit(X_train, y_train)
+            
+            optimal_score = grid.best_score_
+            optimal_hypeparameters = grid.best_params_
+            first_bracket_position = re.search("\(", str(j)).start()
+
+            model_names.append(str(j)[0:first_bracket_position])
+            scores.append(round(optimal_score*100, 3))
+            hyperparameters.append(str(optimal_hypeparameters))
+            model_score.update({str(j)[0:first_bracket_position]: optimal_score})
+            model_hyperparameters.update({str(j)[0:first_bracket_position]: optimal_hypeparameters})
+        
+        tuned_performance_df = pd.DataFrame({"algortithm": model_names, metric: scores, "hyperparameters": hyperparameters})
+        print('\nPerformance of Tuned Classifiers:')
+        print(tabulate(round(tuned_performance_df, 3), headers='keys', tablefmt='psql'))
+        # display(round(tuned_performance_df, 3))
+
+        # print(f'{i+1}) {str(j)[0:first_bracket_position]}')
+        # print('-'*(len(str(j)[0:first_bracket_position])+5))
+        # print(f'Optimal Accuracy: {round(optimal_score*100, 3)}%')
+        # print(f'Optimal Hyperparameters: {optimal_hypeparameters}')
+        # print('-'*100)
+        
+        if save_cv_results == True:
+            now = datetime.now()
+            dt_string = now.strftime("%d/%m/%Y_%H:%M:%S")
+            filename = "grid_search_results_"+str(k_fold)+"foldcv_"+str(dt_string)+".pkl"
+            joblib.dump(grid, filename)
+        
+
+        # fit the best performing model       
+        
+        tuned_models_hyperparameters = {
+            "LogisticRegression": LogisticRegression(**model_hyperparameters["LogisticRegression"]),
+            "SVC": SVC(**model_hyperparameters["SVC"]),
+            "LinearSVC": LinearSVC(**model_hyperparameters["LinearSVC"]),
+            "KNeighborsClassifier": KNeighborsClassifier(**model_hyperparameters["KNeighborsClassifier"]),
+            "GaussianNB": GaussianNB(**model_hyperparameters["GaussianNB"]),
+            "DecisionTreeClassifier": DecisionTreeClassifier(**model_hyperparameters["DecisionTreeClassifier"]),
+            "BaggingClassifier": BaggingClassifier(**model_hyperparameters["BaggingClassifier"]),
+            "RandomForestClassifier": RandomForestClassifier(**model_hyperparameters["RandomForestClassifier"]),
+            "AdaBoostClassifier": AdaBoostClassifier(**model_hyperparameters["AdaBoostClassifier"]),
+            "GradientBoostingClassifier": GradientBoostingClassifier(**model_hyperparameters["GradientBoostingClassifier"]),
+            "XGBClassifier": XGBClassifier(**model_hyperparameters["XGBClassifier"])
+            }
+
+        best_performing_model = max(model_score, key=model_score.get)
+        # bpm_optimal_metric = model_score[best_performing_model]
+        # bpm_hyperparameters = model_hyperparameters[best_performing_model]
+
+        classifier = tuned_models_hyperparameters[best_performing_model]
+        classifier.fit(X_train, y_train)
+        y_pred = classifier.predict(X_test)
+        y_prob = classifier.predict_proba(X_test)[:,1]
+        
+        # confusion matrix
+        cm = confusion_matrix(y_test, y_pred)
+
+        X_train2 = train_df.drop(columns=[identifier[0], target])
+        y_train_initial = train_df[[target]]
+        y_train2 = label_binarize(y_train_initial, classes=range(len(train_df[target].unique())))
+
+        # create test set
+        X_test2 = test_df[X_train.columns]
+        y_test_initial = test_df[[target]]
+        y_test2 = label_binarize(y_test_initial, classes=range(len(train_df[target].unique())))
+
+        n_classes = y_test2.shape[1]
+
+        # Learn to predict each class against the other
+        classifier2 = OneVsRestClassifier(tuned_models_hyperparameters[best_performing_model])
+        y_score = classifier2.fit(X_train2, y_train2).decision_function(X_test2)
+
+        # Compute ROC curve and ROC area for each class
+        fpr = dict()
+        tpr = dict()
+        roc_auc = dict()
+        for i in range(n_classes):
+            fpr[i], tpr[i], _ = roc_curve(y_test2[:, i], y_score[:, i])
+            roc_auc[i] = auc(fpr[i], tpr[i])
+        
+        # Compute micro-average ROC curve and ROC area
+        fpr["micro"], tpr["micro"], _ = roc_curve(y_test2.ravel(), y_score.ravel())
+        roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+
+        # First aggregate all false positive rates
+        all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
+
+        # Then interpolate all ROC curves at this points
+        mean_tpr = np.zeros_like(all_fpr)
+        for i in range(n_classes):
+            mean_tpr += np.interp(all_fpr, fpr[i], tpr[i])
+
+        # Finally average it and compute AUC
+        mean_tpr /= n_classes
+
+        fpr["macro"] = all_fpr
+        tpr["macro"] = mean_tpr
+        roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
+
+        # classification metrics
+        recall = recall_score(y_test, y_pred, average="weighted")
+        precision = precision_score(y_test, y_pred, average="weighted")
+        accuracy = accuracy_score(y_test, y_pred)
+        f1 = f1_score(y_test, y_pred, average="weighted")
+        kappa = cohen_kappa_score(y_test, y_pred)
+
+        print(f"\nPerformance of best performing model ({best_performing_model}) on the test set:")
+        # print(classification_report(y_test, y_pred))
+        # print('\n')
+        # print(f'Accuracy: {round(accuracy, 3)}')
+        # print(f'Recall: {round(recall, 3)}')
+        # print(f'Presicion: {round(precision, 3)}')
+        # print(f'F1 score: {round(f1, 3)}')
+        # print(f'ROC AUC: {round(roc_auc_score(y_test, y_prob), 3)}')
+        # print('\n')
+        bpm_results = pd.DataFrame({"Model": [best_performing_model], "Accuracy": [accuracy], "Recall": [recall], "Precision": [precision], "F1 score": [f1], "Cohen's kappa": [kappa]})
+        print(tabulate(round(bpm_results, 3), headers='keys', tablefmt='psql'))
+
+        # results = {"accuracy":[accuracy],"recall":[recall], "precision":[precision], "f1":[f1] "AUC":[roc_auc_score(y_test, y_prob)]}
+
+        if interactive_visuals == False:
+            
+            # Visualizing Confusion Matrix
+            group_counts = ["{0:0.0f}".format(value) for value in cm.flatten()]
+            group_percentages = ["{0:.2%}".format(value) for value in cm.flatten()/np.sum(cm)]
+            labels = [f"{v1}\n{v2}" for v1, v2 in zip(group_counts, group_percentages)]
+            labels = np.asarray(labels).reshape(len(train_df[target].unique()), len(train_df[target].unique()))
+            sns.heatmap(cm_df, annot=labels, fmt="", cmap="YlGnBu", cbar=False)
+            plt.title(label = "Confusion Matrix")
+            plt.show()
+
+            lw = 2
+            
+            # Plot all ROC curves
+            plt.figure()
+            plt.plot(
+                fpr["micro"],
+                tpr["micro"],
+                label="micro-average ROC curve (area = {0:0.2f})".format(roc_auc["micro"]),
+                color="deeppink",
+                linestyle=":",
+                linewidth=4,
+            )
+
+            plt.plot(
+                fpr["macro"],
+                tpr["macro"],
+                label="macro-average ROC curve (area = {0:0.2f})".format(roc_auc["macro"]),
+                color="navy",
+                linestyle=":",
+                linewidth=4,
+            )
+
+            colors = cycle(["aqua", "darkorange", "cornflowerblue", "yellow"])
+            for i, color in zip(range(n_classes), colors):
+                plt.plot(
+                    fpr[i],
+                    tpr[i],
+                    color=color,
+                    lw=lw,
+                    label="ROC curve of class {0} (area = {1:0.2f})".format(i, roc_auc[i]),
+                )
+
+            plt.plot([0, 1], [0, 1], color="navy", lw=lw, linestyle="--")
+            plt.xlim([0.0, 1.0])
+            plt.ylim([0.0, 1.05])
+            plt.xlabel("False Positive Rate")
+            plt.ylabel("True Positive Rate")
+            plt.title("Multiclass ROC curve")
+            plt.legend(loc="lower right")
+            plt.show()
+
+            # sns.set_theme(style = 'white')
+            # # plt.figure(figsize = (8, 8))
+            # plt.plot(false_positive_rate, true_positive_rate, color = '#b01717', label = 'AUC = %0.3f' % roc_auc)
+            # plt.legend(loc = 'lower right')
+            # plt.plot([0, 1], [0, 1], linestyle = '--', color = '#174ab0')
+            # plt.axis('tight')
+            # plt.title(label = "ROC curve")
+            # plt.ylabel('True Positive Rate')
+            # plt.xlabel('False Positive Rate')
+            # plt.show()
+        
+            # plt.plot(recall_, precision_, color = '#b01717')
+            # plt.axis('tight')
+            # plt.title(label = "Precision-Recall curve")
+            # plt.ylabel('Precision')
+            # plt.xlabel('Recall')
+            # plt.show()
+
+            return None
             
 
 
