@@ -536,3 +536,89 @@ def box_plot_v2(df: pd.DataFrame, features: list, categorical: list) -> None:
 # plt.title("Some extension of Receiver operating characteristic to multiclass")
 # plt.legend(loc="lower right")
 # plt.show()
+
+### PLOTLY CLASSIFICATION VISUALS ###
+
+# elif interactive_visuals == True:
+    # z = [
+    #     [cm_df.iloc[0][0], cm_df.iloc[0][1]],
+    #     [cm_df.iloc[1][0], cm_df.iloc[1][1]]
+    #     ]
+
+    # # visualize confusion matrix
+    # x = train_df[target].unique()
+    # y = train_df[target].unique()
+
+    # # change each element of z to type string for annotations
+    # z_text = [[str(y) for y in x] for x in cm]
+
+    # # set up figure 
+    # cm_fig = ff.create_annotated_heatmap(z, x=x, y=y, annotation_text=z_text, colorscale='Viridis')
+
+    # # add title
+    # cm_fig.update_layout(title_text='Confusion matrix',
+    #                 xaxis = dict(title='Predicted Class'),
+    #                 yaxis = dict(title='True Class')
+    #                 )
+
+    # # add custom xaxis title
+    # cm_fig.add_annotation(dict(font=dict(color="black",size=14),
+    #                         x=0.5,
+    #                         y=-0.15,
+    #                         showarrow=False,
+    #                         text="Predicted value",
+    #                         xref="paper",
+    #                         yref="paper"))
+
+    # # add custom yaxis title
+    # cm_fig.add_annotation(dict(font=dict(color="black",size=14),
+    #                         x=-0.35,
+    #                         y=0.5,
+    #                         showarrow=False,
+    #                         text="Real value",
+    #                         textangle=-90,
+    #                         xref="paper",
+    #                         yref="paper"))
+
+    # # adjust margins to make room for yaxis title
+    # cm_fig.update_layout(margin=dict(t=50, l=200))
+
+    # # add colorbar
+    # cm_fig['data'][0]['showscale'] = True
+    # cm_fig.show()
+
+
+    # visualize roc curve
+
+    # roc_fig = px.area(
+    #     x=false_positive_rate, y=true_positive_rate,
+    #     title=f'ROC Curve (AUC={auc(false_positive_rate, true_positive_rate):.3f})',
+    #     labels=dict(x='False Positive Rate', y='True Positive Rate'),
+    #     width=700, height=500
+    #     )
+    
+    # roc_fig.add_shape(
+    #     type='line', line=dict(dash='dash'),
+    #     x0=0, x1=1, y0=0, y1=1
+    # )
+
+    # roc_fig.update_yaxes(scaleanchor="x", scaleratio=1)
+    # roc_fig.update_xaxes(constrain='domain')
+    # roc_fig.show()
+
+    # # visualize precision-recall curve
+
+    # prc_fig = px.area(
+    #     x=recall, y=precision,
+    #     title=f'Precision-Recall Curve (AUC={auc(false_positive_rate, true_positive_rate):.3f})',
+    #     labels=dict(x='Recall', y='Precision'),
+    #     width=700, height=500
+    # )
+    # prc_fig.add_shape(
+    #     type='line', line=dict(dash='dash'),
+    #     x0=0, x1=1, y0=1, y1=0
+    # )
+    # prc_fig.update_yaxes(scaleanchor="x", scaleratio=1)
+    # prc_fig.update_xaxes(constrain='domain')
+
+    # prc_fig.show()

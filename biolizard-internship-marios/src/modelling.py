@@ -1,6 +1,5 @@
 # LOAD PACKAGES
 import sys
-from tkinter import ON
 sys.path.append(r"C:\Users\35799\Desktop\cookiecutter-analytical-project\biolizard-internship-marios\src")
 import pandas as pd
 from IPython.display import display
@@ -28,6 +27,7 @@ from sklearn.metrics import *
 from sklearn.model_selection import GridSearchCV
 import plotly.express as px
 import plotly.figure_factory as ff
+from yellowbrick.classifier import ROCAUC
 
 ### FEATURE SELECTION FUNCTION ###
 def feature_selection(df: pd.DataFrame, identifier: list, target: str, method: str, **kwargs) -> pd.DataFrame:
@@ -148,7 +148,7 @@ def feature_selection(df: pd.DataFrame, identifier: list, target: str, method: s
         return feature_selection_df
 
 ### BINARY CLASSIFICATION FUNCTION ###
-def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, k_fold: int=10, metric: str="accuracy", save_cv_results: bool=True, interactive_visuals: bool=True) -> None:
+def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, k_fold: int=10, metric: str="accuracy", save_cv_results: bool=True) -> None:
     
     '''
     The function fits different binary classification models, performs hyperparameter tuning and returns the best model.
@@ -160,8 +160,7 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
         metric (str): metric to be used for the hyperparameter tuning (accuracy, recall, precision, default=accuracy)
         k_fold (int): number of k-folds for cross-validation (default=10)
         save_cv_results (bool): whether the hyperparameter tuning results should be saved (True or False, default=True)
-        interavtive_visuals (bool): if True plots are create with plotly else with seaborn and matplotlib (True or False, default=True)
-    
+            
     Returns:
         None
     '''
@@ -226,7 +225,6 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
         # models.append(['MLP', MLPClassifier(random_state=0)])
 
         # check baseline performance of classifiers
-        
         # data structure to append results for each classifier
         lst_1 = []
 
@@ -244,15 +242,6 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
             accuracy = accuracy_score(y_test, y_pred)
             f1 = f1_score(y_test, y_pred)
 
-            # print(f'{i+1}) {models[m][0]}:')
-            # print('-'*(len(models[m][0])+5))
-            # print("Confusion Matrix:")
-            # print(cm_df)
-            # print(f'Accuracy: {round(accuracy, 3)}')
-            # print(f'Recall: {round(recall, 3)}')
-            # print(f'Presicion: {round(precision, 3)}')
-            # print('-'*100)
-
             lst_2.append(models[m][0])
             lst_2.append(cm_df.iloc[0][0])
             lst_2.append(cm_df.iloc[0][1])
@@ -267,8 +256,7 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
         baseline_performance_df = pd.DataFrame(lst_1, columns=['Algorithm','TN', 'FN', 'FP', 'TP', 'Accuracy','Recall', 'Precision', 'F1'])
         print('\nBaseline Performance of Classifiers:')
         print(tabulate(round(baseline_performance_df, 3), headers='keys', tablefmt='psql'))
-        # display(round(baseline_performance_df, 3))
-
+        
         # define hyperparameter search space
         search_space = [
             (LogisticRegression(), [{'penalty':['l1', 'l2', 'elasticnet', 'none'], 'class_weight':['balanced', None], 'solver':["saga"], 'random_state':[0]}]),
@@ -292,7 +280,7 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
         model_score = {}
         model_hyperparameters = {}
 
-        for i, (j, k) in enumerate(search_space):
+        for j, k in search_space:
             
             grid = GridSearchCV(estimator=j, param_grid=k, scoring=metric, cv=k_fold)
             grid.fit(X_train, y_train)
@@ -310,23 +298,15 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
         tuned_performance_df = pd.DataFrame({"algortithm": model_names, metric: scores, "hyperparameters": hyperparameters})
         print('\nPerformance of Tuned Classifiers:')
         print(tabulate(round(tuned_performance_df, 3), headers='keys', tablefmt='psql'))
-        # display(round(tuned_performance_df, 3))
-
-            # print(f'{i+1}) {str(j)[0:first_bracket_position]}')
-            # print('-'*(len(str(j)[0:first_bracket_position])+5))
-            # print(f'Optimal Accuracy: {round(optimal_score*100, 3)}%')
-            # print(f'Optimal Hyperparameters: {optimal_hypeparameters}')
-            # print('-'*100)
-        
+       
+       # save hyperparameter tuning results
         if save_cv_results == True:
             now = datetime.now()
             dt_string = now.strftime("%d/%m/%Y_%H:%M:%S")
             filename = "grid_search_results_"+str(k_fold)+"foldcv_"+str(dt_string)+".pkl"
             joblib.dump(grid, filename)
         
-
         # fit the best performing model       
-        
         tuned_models_hyperparameters = {
             "LogisticRegression": LogisticRegression(**model_hyperparameters["LogisticRegression"]),
             "SVC": SVC(**model_hyperparameters["SVC"]),
@@ -354,11 +334,11 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
         cm = confusion_matrix(y_test, y_pred)
         
         # Roc Curve
-        false_positive_rate, true_positive_rate, roc_thresholds = roc_curve(y_test, y_prob)
+        false_positive_rate, true_positive_rate, _ = roc_curve(y_test, y_prob)
         roc_auc = auc(false_positive_rate, true_positive_rate)
 
         # Precision-Recall curve
-        precision_, recall_, prc_thresholds = precision_recall_curve(y_test, y_prob)     
+        precision_, recall_, _ = precision_recall_curve(y_test, y_prob)     
         
         # classification metrics
         recall = recall_score(y_test, y_pred)
@@ -367,137 +347,45 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
         f1 = f1_score(y_test, y_pred)
 
         print(f"\nPerformance of best performing model ({best_performing_model}) on the test set:")
-        # print(classification_report(y_test, y_pred))
-        # print('\n')
-        # print(f'Accuracy: {round(accuracy, 3)}')
-        # print(f'Recall: {round(recall, 3)}')
-        # print(f'Presicion: {round(precision, 3)}')
-        # print(f'F1 score: {round(f1, 3)}')
-        # print(f'ROC AUC: {round(roc_auc_score(y_test, y_prob), 3)}')
-        # print('\n')
         bpm_results = pd.DataFrame({"Model": [best_performing_model], "Accuracy": [accuracy], "Recall": [recall], "Precision": [precision], "F1 score": [f1], "ROC AUC": [roc_auc_score(y_test, y_prob)]})
         print(tabulate(round(bpm_results, 3), headers='keys', tablefmt='psql'))
 
         # results = {"accuracy":[accuracy],"recall":[recall], "precision":[precision], "f1":[f1] "AUC":[roc_auc_score(y_test, y_prob)]}
+  
+        # Visualizing Confusion Matrix
+        group_names = ["True Negative","False Positive","False Negative","True Positive"]
+        group_counts = ["{0:0.0f}".format(value) for value in cm.flatten()]
+        group_percentages = ["{0:.2%}".format(value) for value in cm.flatten()/np.sum(cm)]
+        labels = [f"{v1}\n{v2}\n{v3}" for v1, v2, v3 in zip(group_names, group_counts, group_percentages)]
+        labels = np.asarray(labels).reshape(2,2)
+        sns.heatmap(cm_df, annot=labels, fmt="", cmap="YlGnBu", cbar=False)
+        plt.title(label = "Confusion Matrix")
+        plt.show()
 
-        if interactive_visuals == False:
-            
-            # Visualizing Confusion Matrix
-            group_names = ["True Negative","False Positive","False Negative","True Positive"]
-            group_counts = ["{0:0.0f}".format(value) for value in cm.flatten()]
-            group_percentages = ["{0:.2%}".format(value) for value in cm.flatten()/np.sum(cm)]
-            labels = [f"{v1}\n{v2}\n{v3}" for v1, v2, v3 in zip(group_names, group_counts, group_percentages)]
-            labels = np.asarray(labels).reshape(2,2)
-            sns.heatmap(cm_df, annot=labels, fmt="", cmap="YlGnBu", cbar=False)
-            plt.title(label = "Confusion Matrix")
-            plt.show()
+        # Visualizing ROC Curve
+        sns.set_theme(style = 'white')
+        # plt.figure(figsize = (8, 8))
+        plt.plot(false_positive_rate, true_positive_rate, color = '#b01717', label = 'AUC = %0.3f' % roc_auc)
+        plt.legend(loc = 'lower right')
+        plt.plot([0, 1], [0, 1], linestyle = '--', color = '#174ab0')
+        plt.axis('tight')
+        plt.title(label = "ROC curve")
+        plt.ylabel('True Positive Rate')
+        plt.xlabel('False Positive Rate')
+        plt.show()
 
-            sns.set_theme(style = 'white')
-            # plt.figure(figsize = (8, 8))
-            plt.plot(false_positive_rate, true_positive_rate, color = '#b01717', label = 'AUC = %0.3f' % roc_auc)
-            plt.legend(loc = 'lower right')
-            plt.plot([0, 1], [0, 1], linestyle = '--', color = '#174ab0')
-            plt.axis('tight')
-            plt.title(label = "ROC curve")
-            plt.ylabel('True Positive Rate')
-            plt.xlabel('False Positive Rate')
-            plt.show()
-        
-            plt.plot(recall_, precision_, color = '#b01717')
-            plt.axis('tight')
-            plt.title(label = "Precision-Recall curve")
-            plt.ylabel('Precision')
-            plt.xlabel('Recall')
-            plt.show()
+        # Visualizing Precision-Recall Curve
+        plt.plot(recall_, precision_, color = '#b01717')
+        plt.axis('tight')
+        plt.title(label = "Precision-Recall curve")
+        plt.ylabel('Precision')
+        plt.xlabel('Recall')
+        plt.show()
 
-        # elif interactive_visuals == True:
-            # z = [
-            #     [cm_df.iloc[0][0], cm_df.iloc[0][1]],
-            #     [cm_df.iloc[1][0], cm_df.iloc[1][1]]
-            #     ]
-
-            # # visualize confusion matrix
-            # x = train_df[target].unique()
-            # y = train_df[target].unique()
-
-            # # change each element of z to type string for annotations
-            # z_text = [[str(y) for y in x] for x in cm]
-
-            # # set up figure 
-            # cm_fig = ff.create_annotated_heatmap(z, x=x, y=y, annotation_text=z_text, colorscale='Viridis')
-
-            # # add title
-            # cm_fig.update_layout(title_text='Confusion matrix',
-            #                 xaxis = dict(title='Predicted Class'),
-            #                 yaxis = dict(title='True Class')
-            #                 )
-
-            # # add custom xaxis title
-            # cm_fig.add_annotation(dict(font=dict(color="black",size=14),
-            #                         x=0.5,
-            #                         y=-0.15,
-            #                         showarrow=False,
-            #                         text="Predicted value",
-            #                         xref="paper",
-            #                         yref="paper"))
-
-            # # add custom yaxis title
-            # cm_fig.add_annotation(dict(font=dict(color="black",size=14),
-            #                         x=-0.35,
-            #                         y=0.5,
-            #                         showarrow=False,
-            #                         text="Real value",
-            #                         textangle=-90,
-            #                         xref="paper",
-            #                         yref="paper"))
-
-            # # adjust margins to make room for yaxis title
-            # cm_fig.update_layout(margin=dict(t=50, l=200))
-
-            # # add colorbar
-            # cm_fig['data'][0]['showscale'] = True
-            # cm_fig.show()
-
-
-            # visualize roc curve
-
-            # roc_fig = px.area(
-            #     x=false_positive_rate, y=true_positive_rate,
-            #     title=f'ROC Curve (AUC={auc(false_positive_rate, true_positive_rate):.3f})',
-            #     labels=dict(x='False Positive Rate', y='True Positive Rate'),
-            #     width=700, height=500
-            #     )
-            
-            # roc_fig.add_shape(
-            #     type='line', line=dict(dash='dash'),
-            #     x0=0, x1=1, y0=0, y1=1
-            # )
-
-            # roc_fig.update_yaxes(scaleanchor="x", scaleratio=1)
-            # roc_fig.update_xaxes(constrain='domain')
-            # roc_fig.show()
-
-            # # visualize precision-recall curve
-
-            # prc_fig = px.area(
-            #     x=recall, y=precision,
-            #     title=f'Precision-Recall Curve (AUC={auc(false_positive_rate, true_positive_rate):.3f})',
-            #     labels=dict(x='Recall', y='Precision'),
-            #     width=700, height=500
-            # )
-            # prc_fig.add_shape(
-            #     type='line', line=dict(dash='dash'),
-            #     x0=0, x1=1, y0=1, y1=0
-            # )
-            # prc_fig.update_yaxes(scaleanchor="x", scaleratio=1)
-            # prc_fig.update_xaxes(constrain='domain')
-
-            # prc_fig.show()
-
-            return None
+        return None
 
 ### MULTICLASS CLASSIFICATION FUNCTION ###
-def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, k_fold: int=10, metric: str="accuracy", save_cv_results: bool=True, interactive_visuals: bool=True) -> None:
+def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, k_fold: int=10, metric: str="accuracy", save_cv_results: bool=True) -> None:
     
     '''
     The function fits different multi-class classification models, performs hyperparameter tuning and returns the best model.
@@ -509,7 +397,6 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
         metric (str): metric to be used for the hyperparameter tuning (accuracy, recall, precision, default=accuracy)
         k_fold (int): number of k-folds for cross-validation (default=10)
         save_cv_results (bool): whether the hyperparameter tuning results should be saved (True or False, default=True)
-        interavtive_visuals (bool): if True plots are create with plotly else with seaborn and matplotlib (True or False, default=True)
     
     Returns:
         None
@@ -594,20 +481,7 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
             f1 = f1_score(y_test, y_pred, average="weighted")
             kappa = cohen_kappa_score(y_test, y_pred)
 
-            # print(f'{i+1}) {models[m][0]}:')
-            # print('-'*(len(models[m][0])+5))
-            # print("Confusion Matrix:")
-            # print(cm_df)
-            # print(f'Accuracy: {round(accuracy, 3)}')
-            # print(f'Recall: {round(recall, 3)}')
-            # print(f'Presicion: {round(precision, 3)}')
-            # print('-'*100)
-
             lst_2.append(models[m][0])
-            # lst_2.append(cm_df.iloc[0][0])
-            # lst_2.append(cm_df.iloc[0][1])
-            # lst_2.append(cm_df.iloc[1][0])
-            # lst_2.append(cm_df.iloc[1][1])
             lst_2.append(accuracy)
             lst_2.append(recall)
             lst_2.append(precision)
@@ -618,7 +492,6 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
         baseline_performance_df = pd.DataFrame(lst_1, columns=['Algorithm', 'Accuracy', 'Recall', 'Precision', 'F1', "Cohens's kappa"])
         print('\nBaseline Performance of Classifiers:')
         print(tabulate(round(baseline_performance_df, 3), headers='keys', tablefmt='psql'))
-        # display(round(baseline_performance_df, 3))
 
         # define hyperparameter search space
         search_space = [
@@ -635,6 +508,9 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
             (GradientBoostingClassifier(), [{'learning_rate':[0.05, 0.1, 0.15], "loss":['log_loss','deviance', 'exponential'], 'n_estimators':[50, 100, 150], 'criterion':['friedman_mse', 'squared_error', 'mse'], 'random_state':[0]}]),
             (XGBClassifier(), [{'learning_rate':[0.1, 0.3, 0.5], 'n_estimators':[50, 100, 150], 'sampling_method':['uniform', 'subsample', 'gradient_based'], 'lambda':[0, 1, 2], 'alpha':[0, 1, 2], 'random_state':[0]}])
             ]
+        
+        # removed MLP because it takes too much time and has less predictive accuracy than some of the rest of the models
+        # (MLPClassifier(), [{'hidden_layer_sizes': [(50,), (100,), (150,)], 'activation':['identity', 'logistic', 'tanh', 'relu'], 'solver':['lbfgs', 'sgd', 'adam'], 'alpha': [0.0001, 0.0002, 0.0003], 'learning_rate':['optimal', 'constant', 'invscaling'], 'learning_rate_init': [0.0005, 0.001, 0.002], 'random_state':[0]}])
     
         # perform hyperparameter tuning using k-fold cross-validation
         model_names = []
@@ -643,7 +519,7 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
         model_score = {}
         model_hyperparameters = {}
 
-        for i, (j, k) in enumerate(search_space):
+        for j, k in search_space:
             
             grid = GridSearchCV(estimator=j, param_grid=k, scoring=metric, cv=k_fold)
             grid.fit(X_train, y_train)
@@ -661,14 +537,8 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
         tuned_performance_df = pd.DataFrame({"algortithm": model_names, metric: scores, "hyperparameters": hyperparameters})
         print('\nPerformance of Tuned Classifiers:')
         print(tabulate(round(tuned_performance_df, 3), headers='keys', tablefmt='psql'))
-        # display(round(tuned_performance_df, 3))
-
-        # print(f'{i+1}) {str(j)[0:first_bracket_position]}')
-        # print('-'*(len(str(j)[0:first_bracket_position])+5))
-        # print(f'Optimal Accuracy: {round(optimal_score*100, 3)}%')
-        # print(f'Optimal Hyperparameters: {optimal_hypeparameters}')
-        # print('-'*100)
         
+        # save hyperparameter tuning results
         if save_cv_results == True:
             now = datetime.now()
             dt_string = now.strftime("%d/%m/%Y_%H:%M:%S")
@@ -677,7 +547,6 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
         
 
         # fit the best performing model       
-        
         tuned_models_hyperparameters = {
             "LogisticRegression": LogisticRegression(**model_hyperparameters["LogisticRegression"]),
             "SVC": SVC(**model_hyperparameters["SVC"]),
@@ -704,47 +573,47 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
         # confusion matrix
         cm = confusion_matrix(y_test, y_pred)
 
-        X_train2 = train_df.drop(columns=[identifier[0], target])
-        y_train_initial = train_df[[target]]
-        y_train2 = label_binarize(y_train_initial, classes=range(len(train_df[target].unique())))
+        # X_train2 = train_df.drop(columns=[identifier[0], target])
+        # y_train_initial = train_df[[target]]
+        # y_train2 = label_binarize(y_train_initial, classes=range(len(train_df[target].unique())))
 
-        # create test set
-        X_test2 = test_df[X_train.columns]
-        y_test_initial = test_df[[target]]
-        y_test2 = label_binarize(y_test_initial, classes=range(len(train_df[target].unique())))
+        # # create test set
+        # X_test2 = test_df[X_train.columns]
+        # y_test_initial = test_df[[target]]
+        # y_test2 = label_binarize(y_test_initial, classes=range(len(train_df[target].unique())))
 
-        n_classes = y_test2.shape[1]
+        # n_classes = y_test2.shape[1]
 
-        # Learn to predict each class against the other
-        classifier2 = OneVsRestClassifier(tuned_models_hyperparameters[best_performing_model])
-        y_score = classifier2.fit(X_train2, y_train2).decision_function(X_test2)
+        # # Learn to predict each class against the other
+        # classifier2 = OneVsRestClassifier(tuned_models_hyperparameters[best_performing_model])
+        # y_score = classifier2.fit(X_train2, y_train2).decision_function(X_test2)
 
-        # Compute ROC curve and ROC area for each class
-        fpr = dict()
-        tpr = dict()
-        roc_auc = dict()
-        for i in range(n_classes):
-            fpr[i], tpr[i], _ = roc_curve(y_test2[:, i], y_score[:, i])
-            roc_auc[i] = auc(fpr[i], tpr[i])
+        # # Compute ROC curve and ROC area for each class
+        # fpr = dict()
+        # tpr = dict()
+        # roc_auc = dict()
+        # for i in range(n_classes):
+        #     fpr[i], tpr[i], _ = roc_curve(y_test2[:, i], y_score[:, i])
+        #     roc_auc[i] = auc(fpr[i], tpr[i])
         
-        # Compute micro-average ROC curve and ROC area
-        fpr["micro"], tpr["micro"], _ = roc_curve(y_test2.ravel(), y_score.ravel())
-        roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+        # # Compute micro-average ROC curve and ROC area
+        # fpr["micro"], tpr["micro"], _ = roc_curve(y_test2.ravel(), y_score.ravel())
+        # roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
 
-        # First aggregate all false positive rates
-        all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
+        # # First aggregate all false positive rates
+        # all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
 
-        # Then interpolate all ROC curves at this points
-        mean_tpr = np.zeros_like(all_fpr)
-        for i in range(n_classes):
-            mean_tpr += np.interp(all_fpr, fpr[i], tpr[i])
+        # # Then interpolate all ROC curves at this points
+        # mean_tpr = np.zeros_like(all_fpr)
+        # for i in range(n_classes):
+        #     mean_tpr += np.interp(all_fpr, fpr[i], tpr[i])
 
-        # Finally average it and compute AUC
-        mean_tpr /= n_classes
+        # # Finally average it and compute AUC
+        # mean_tpr /= n_classes
 
-        fpr["macro"] = all_fpr
-        tpr["macro"] = mean_tpr
-        roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
+        # fpr["macro"] = all_fpr
+        # tpr["macro"] = mean_tpr
+        # roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
 
         # classification metrics
         recall = recall_score(y_test, y_pred, average="weighted")
@@ -754,90 +623,89 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
         kappa = cohen_kappa_score(y_test, y_pred)
 
         print(f"\nPerformance of best performing model ({best_performing_model}) on the test set:")
-        # print(classification_report(y_test, y_pred))
-        # print('\n')
-        # print(f'Accuracy: {round(accuracy, 3)}')
-        # print(f'Recall: {round(recall, 3)}')
-        # print(f'Presicion: {round(precision, 3)}')
-        # print(f'F1 score: {round(f1, 3)}')
-        # print(f'ROC AUC: {round(roc_auc_score(y_test, y_prob), 3)}')
-        # print('\n')
         bpm_results = pd.DataFrame({"Model": [best_performing_model], "Accuracy": [accuracy], "Recall": [recall], "Precision": [precision], "F1 score": [f1], "Cohen's kappa": [kappa]})
         print(tabulate(round(bpm_results, 3), headers='keys', tablefmt='psql'))
 
         # results = {"accuracy":[accuracy],"recall":[recall], "precision":[precision], "f1":[f1] "AUC":[roc_auc_score(y_test, y_prob)]}
 
-        if interactive_visuals == False:
-            
-            # Visualizing Confusion Matrix
-            group_counts = ["{0:0.0f}".format(value) for value in cm.flatten()]
-            group_percentages = ["{0:.2%}".format(value) for value in cm.flatten()/np.sum(cm)]
-            labels = [f"{v1}\n{v2}" for v1, v2 in zip(group_counts, group_percentages)]
-            labels = np.asarray(labels).reshape(len(train_df[target].unique()), len(train_df[target].unique()))
-            sns.heatmap(cm_df, annot=labels, fmt="", cmap="YlGnBu", cbar=False)
-            plt.title(label = "Confusion Matrix")
-            plt.show()
+        # Visualizing Confusion Matrix
+        group_counts = ["{0:0.0f}".format(value) for value in cm.flatten()]
+        group_percentages = ["{0:.2%}".format(value) for value in cm.flatten()/np.sum(cm)]
+        labels = [f"{v1}\n{v2}" for v1, v2 in zip(group_counts, group_percentages)]
+        labels = np.asarray(labels).reshape(len(train_df[target].unique()), len(train_df[target].unique()))
+        sns.heatmap(cm_df, annot=labels, fmt="", cmap="YlGnBu", cbar=False)
+        plt.title(label = "Confusion Matrix")
+        plt.show()
 
-            lw = 2
-            
-            # Plot all ROC curves
-            plt.figure()
-            plt.plot(
-                fpr["micro"],
-                tpr["micro"],
-                label="micro-average ROC curve (area = {0:0.2f})".format(roc_auc["micro"]),
-                color="deeppink",
-                linestyle=":",
-                linewidth=4,
-            )
-
-            plt.plot(
-                fpr["macro"],
-                tpr["macro"],
-                label="macro-average ROC curve (area = {0:0.2f})".format(roc_auc["macro"]),
-                color="navy",
-                linestyle=":",
-                linewidth=4,
-            )
-
-            colors = cycle(["aqua", "darkorange", "cornflowerblue", "yellow"])
-            for i, color in zip(range(n_classes), colors):
-                plt.plot(
-                    fpr[i],
-                    tpr[i],
-                    color=color,
-                    lw=lw,
-                    label="ROC curve of class {0} (area = {1:0.2f})".format(i, roc_auc[i]),
-                )
-
-            plt.plot([0, 1], [0, 1], color="navy", lw=lw, linestyle="--")
-            plt.xlim([0.0, 1.0])
-            plt.ylim([0.0, 1.05])
-            plt.xlabel("False Positive Rate")
-            plt.ylabel("True Positive Rate")
-            plt.title("Multiclass ROC curve")
-            plt.legend(loc="lower right")
-            plt.show()
-
-            # sns.set_theme(style = 'white')
-            # # plt.figure(figsize = (8, 8))
-            # plt.plot(false_positive_rate, true_positive_rate, color = '#b01717', label = 'AUC = %0.3f' % roc_auc)
-            # plt.legend(loc = 'lower right')
-            # plt.plot([0, 1], [0, 1], linestyle = '--', color = '#174ab0')
-            # plt.axis('tight')
-            # plt.title(label = "ROC curve")
-            # plt.ylabel('True Positive Rate')
-            # plt.xlabel('False Positive Rate')
-            # plt.show()
+        # Plot ROC curves
+        roc_visualizer = ROCAUC(
+            tuned_models_hyperparameters[best_performing_model], 
+            encoder={i:sorted(train_df[target].unique())[i] for i in range(len(train_df[target].unique()))})
         
-            # plt.plot(recall_, precision_, color = '#b01717')
-            # plt.axis('tight')
-            # plt.title(label = "Precision-Recall curve")
-            # plt.ylabel('Precision')
-            # plt.xlabel('Recall')
-            # plt.show()
+        roc_visualizer.fit(X_train, y_train)
+        roc_visualizer.score(X_test, y_test)
+        roc_visualizer.show()
 
-            return None
+        # lw = 2
+        
+        # # Plot all ROC curves
+        # plt.figure()
+        # plt.plot(
+        #     fpr["micro"],
+        #     tpr["micro"],
+        #     label="micro-average ROC curve (area = {0:0.2f})".format(roc_auc["micro"]),
+        #     color="deeppink",
+        #     linestyle=":",
+        #     linewidth=4,
+        # )
+
+        # plt.plot(
+        #     fpr["macro"],
+        #     tpr["macro"],
+        #     label="macro-average ROC curve (area = {0:0.2f})".format(roc_auc["macro"]),
+        #     color="navy",
+        #     linestyle=":",
+        #     linewidth=4,
+        # )
+
+        # colors = cycle(["aqua", "darkorange", "cornflowerblue", "yellow"])
+        # for i, color in zip(range(n_classes), colors):
+        #     plt.plot(
+        #         fpr[i],
+        #         tpr[i],
+        #         color=color,
+        #         lw=lw,
+        #         label="ROC curve of class {0} (area = {1:0.2f})".format(i, roc_auc[i]),
+        #     )
+
+        # plt.plot([0, 1], [0, 1], color="navy", lw=lw, linestyle="--")
+        # plt.xlim([0.0, 1.0])
+        # plt.ylim([0.0, 1.05])
+        # plt.xlabel("False Positive Rate")
+        # plt.ylabel("True Positive Rate")
+        # plt.title("Multiclass ROC curve")
+        # plt.legend(loc="lower right")
+        # plt.show()
+
+        # sns.set_theme(style = 'white')
+        # # plt.figure(figsize = (8, 8))
+        # plt.plot(false_positive_rate, true_positive_rate, color = '#b01717', label = 'AUC = %0.3f' % roc_auc)
+        # plt.legend(loc = 'lower right')
+        # plt.plot([0, 1], [0, 1], linestyle = '--', color = '#174ab0')
+        # plt.axis('tight')
+        # plt.title(label = "ROC curve")
+        # plt.ylabel('True Positive Rate')
+        # plt.xlabel('False Positive Rate')
+        # plt.show()
+    
+        # plt.plot(recall_, precision_, color = '#b01717')
+        # plt.axis('tight')
+        # plt.title(label = "Precision-Recall curve")
+        # plt.ylabel('Precision')
+        # plt.xlabel('Recall')
+        # plt.show()
+
+        return None
             
 
 
