@@ -28,6 +28,12 @@ from sklearn.model_selection import GridSearchCV
 import plotly.express as px
 import plotly.figure_factory as ff
 from yellowbrick.classifier import ROCAUC
+from typing import Union, Any
+from sklearn.inspection import permutation_importance
+
+### GLOBAL VARIABLES ###
+# define the class of sklearn classifiers
+ClassifierModel = Union[LogisticRegression, SVC, LinearSVC, SGDClassifier, KNeighborsClassifier, GaussianNB, DecisionTreeClassifier, BaggingClassifier, RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier, XGBClassifier]
 
 ### FEATURE SELECTION FUNCTION ###
 def feature_selection(df: pd.DataFrame, identifier: list, target: str, method: str, **kwargs) -> pd.DataFrame:
@@ -148,13 +154,14 @@ def feature_selection(df: pd.DataFrame, identifier: list, target: str, method: s
         return feature_selection_df
 
 ### BINARY CLASSIFICATION FUNCTION ###
-def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, k_fold: int=10, metric: str="accuracy", save_cv_results: bool=True) -> None:
+def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, k_fold: int=10, metric: str="accuracy", save_cv_results: bool=True) -> ClassifierModel:
     
     '''
     The function fits different binary classification models, performs hyperparameter tuning and returns the best model.
 
     Parameters:
-        df (Pandas DataFrame): data structure with loaded data
+        train_df (Pandas DataFrame): data structure with loaded data (train sample)
+        test_df (Pandas DataFrame): data structure with loaded data (test sample)
         identifier (list): identifier features of the dataset
         target (str): target feature
         metric (str): metric to be used for the hyperparameter tuning (accuracy, recall, precision, default=accuracy)
@@ -162,14 +169,14 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
         save_cv_results (bool): whether the hyperparameter tuning results should be saved (True or False, default=True)
             
     Returns:
-        None
+        classifier (ClassifierModel): best performing sklearn classifier model
     '''
 
     if not isinstance(train_df, pd.DataFrame):
         error_message = "df must be specified as a Pandas DataFrame"
         raise TypeError(error_message)
     
-    if not isinstance(test_df, pd.DataFrame):
+    elif not isinstance(test_df, pd.DataFrame):
         error_message = "df must be specified as a Pandas DataFrame"
         raise TypeError(error_message)
     
@@ -228,7 +235,7 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
         # data structure to append results for each classifier
         lst_1 = []
 
-        for i, m in enumerate(range(len(models))):
+        for m in range(len(models)):
             lst_2 = []
             model = models[m][1]
             model.fit(X_train, y_train)
@@ -260,7 +267,7 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
         # define hyperparameter search space
         search_space = [
             (LogisticRegression(), [{'penalty':['l1', 'l2', 'elasticnet', 'none'], 'class_weight':['balanced', None], 'solver':["saga"], 'random_state':[0]}]),
-            (SVC(), [{'kernel': ['linear', 'poly', 'rbf', 'sigmoid'], 'class_weight':['balanced', None], 'random_state':[0]}]),
+            (SVC(), [{'kernel': ['linear', 'poly', 'rbf', 'sigmoid'], 'class_weight':['balanced', None], 'probability': [True], 'random_state':[0]}]),
             (LinearSVC(), [{'penalty':['l1', 'l2'], 'class_weight':['balanced', None], 'random_state':[0]}]),
             (SGDClassifier(), [{'loss': ['hinge', 'log_loss', 'log', 'modified_huber', 'squared_hinge', 'perceptron'], 'penalty':['l1', 'l2', 'elasticnet'], 'learning_rate':['optimal', 'constant', 'invscaling'], 'random_state':[0]}]),
             (KNeighborsClassifier(), [{'n_neighbors':[5, 10, 15], 'weights':['uniform', 'distance'], 'algorithm':['auto', 'ball_tree', 'kd_tree', 'brute']}]),
@@ -382,16 +389,17 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
         plt.xlabel('Recall')
         plt.show()
 
-        return None
+        return classifier
 
 ### MULTICLASS CLASSIFICATION FUNCTION ###
-def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, k_fold: int=10, metric: str="accuracy", save_cv_results: bool=True) -> None:
+def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, k_fold: int=10, metric: str="accuracy", save_cv_results: bool=True) -> ClassifierModel:
     
     '''
     The function fits different multi-class classification models, performs hyperparameter tuning and returns the best model.
 
     Parameters:
-        df (Pandas DataFrame): data structure with loaded data
+        train_df (Pandas DataFrame): data structure with loaded data (train sample)
+        test_df (Pandas DataFrame): data structure with loaded data (test sample)
         identifier (list): identifier features of the dataset
         target (str): target feature
         metric (str): metric to be used for the hyperparameter tuning (accuracy, recall, precision, default=accuracy)
@@ -399,14 +407,14 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
         save_cv_results (bool): whether the hyperparameter tuning results should be saved (True or False, default=True)
     
     Returns:
-        None
+        classifier (ClassifierModel): best performing sklearn classifier model
     '''
 
     if not isinstance(train_df, pd.DataFrame):
         error_message = "df must be specified as a Pandas DataFrame"
         raise TypeError(error_message)
     
-    if not isinstance(test_df, pd.DataFrame):
+    elif not isinstance(test_df, pd.DataFrame):
         error_message = "df must be specified as a Pandas DataFrame"
         raise TypeError(error_message)
     
@@ -466,7 +474,7 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
         # data structure to append results for each classifier
         lst_1 = []
 
-        for i, m in enumerate(range(len(models))):
+        for m in range(len(models)):
             lst_2 = []
             model = models[m][1]
             model.fit(X_train, y_train)
@@ -705,8 +713,102 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
         # plt.xlabel('Recall')
         # plt.show()
 
-        return None
+        return classifier
             
+### FEATURE IMPORTANCE FUNCTION ###
+def feature_importance(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, classifier: ClassifierModel) -> None:
+    
+    '''
+    The function displays the feature importance of the given classifier.
+
+    Parameters:
+        train_df (Pandas DataFrame): data structure with loaded data (train sample)
+        test_df (Pandas DataFrame): data structure with loaded data (test sample)
+        identifier (list): identifier features of the dataset
+        target (str): target feature
+        classifier (ClassifierModel): sklearn classifier model
+    
+    Returns:
+        None
+    '''
+        
+    if not isinstance(train_df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
+    
+    elif not isinstance(test_df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
+    
+    elif not isinstance(identifier, list):
+        error_message = "identifier must be specified as a list of strings"
+        raise TypeError(error_message)
+
+    elif not isinstance(target, str):
+        error_message = "target must be specified as a string"
+        raise TypeError(error_message)
+    
+    # elif not isinstance(classifier, ClassifierModel):
+    #     error_message = "classifier must be a ClassifierModel"
+    #     raise TypeError(error_message)
+    
+    else:
+
+        # encode the target variables
+        lb = LabelEncoder()
+        encoded_train_target = lb.fit_transform(train_df[target])
+        encoded_test_target = lb.transform(test_df[target])
+
+        # create train set
+        X_train = train_df.drop(columns=[identifier[0], target])
+        y_train = pd.DataFrame(encoded_train_target, columns=[target])
+
+        # create test set
+        X_test = test_df[X_train.columns]
+        y_test = pd.DataFrame(encoded_test_target, columns=[target])
+
+        first_bracket_position = re.search("\(", str(classifier)).start()
+        model_name = str(classifier)[0:first_bracket_position]
+
+        features = X_train.columns
+
+        def feature_importance_plot(title, ytitle):
+            report = pd.DataFrame({"Feature": features, title: importances})
+            print(tabulate(round(report, 3), headers='keys', tablefmt='psql'))
+
+            # plot feature importance
+            sns.set_theme(style = 'darkgrid')
+            plt.bar([x for x in features], importances)
+            plt.title(f"{model_name} {title}")
+            plt.ylabel(ytitle)
+            plt.xlabel("Features")
+            plt.show()
+        
+        if model_name == "LogisticRegression" or model_name == "SGDClassifier" or model_name == "LinearSVC":
+            # https://machinelearningmastery.com/calculate-feature-importance-with-python/
+            # https://stackoverflow.com/questions/66574982/how-can-we-interpret-feature-importances-for-stochastic-gradient-descent-classif
+
+            importances = classifier.coef_[0]
+            feature_importance_plot(title="Feature Coefficients", ytitle="Coefficients values")
+
+        elif model_name == "DecisionTreeClassifier" or model_name == "RandomForestClassifier" or model_name == "AdaBoostClassifier" or model_name == "GradientBoostingClassifier" or model_name == "XGBClassifier":
+            # https://machinelearningmastery.com/calculate-feature-importance-with-python/
+
+            importances = classifier.feature_importances_
+            feature_importance_plot(title="Feature Importance", ytitle="Mean decrease in impurity")
+
+        elif model_name == "BaggingClassifier":
+            # https://stackoverflow.com/questions/44333573/feature-importances-bagging-scikit-learn
+
+            importances = np.mean([tree.feature_importances_ for tree in classifier.estimators_], axis=0)
+            feature_importance_plot(title="Feature Importance", ytitle="Mean decrease in impurity")
+
+        elif model_name == "GaussianNB" or model_name == "SVC" or model_name == "KNeighborsClassifier":
+            # https://stackoverflow.com/questions/62933365/how-to-get-the-feature-importance-in-gaussian-naive-bayes
+            
+            feature_importance = permutation_importance(classifier, X_test, y_test, scoring="accuracy")
+            importances = feature_importance.importances_mean    
+            feature_importance_plot(title="Feature Permutation Importance", ytitle="Mean accuracy decrease")
 
 
 

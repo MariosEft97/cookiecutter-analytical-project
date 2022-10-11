@@ -622,3 +622,73 @@ def box_plot_v2(df: pd.DataFrame, features: list, categorical: list) -> None:
     # prc_fig.update_xaxes(constrain='domain')
 
     # prc_fig.show()
+
+### Feature Importnace ###
+
+# from sklearn.linear_model import LogisticRegression, SGDClassifier
+# from sklearn.tree import DecisionTreeClassifier
+# from sklearn.svm import SVC, LinearSVC
+# from sklearn.neighbors import KNeighborsClassifier
+# from sklearn.ensemble import BaggingClassifier, RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
+# from sklearn.naive_bayes import GaussianNB
+# from xgboost import XGBClassifier
+
+# import numpy as np
+# import pandas as pd
+# import matplotlib.pyplot as plt
+# import re
+# from sklearn.inspection import permutation_importance
+# from tabulate import tabulate
+# import seaborn as sns
+
+# # create train set
+# x_train = rfe_df.drop(columns=["ID", "Diagnosis"])
+# Y_train = pd.DataFrame(rfe_df, columns=["Diagnosis"]).replace({"B":0, "M":1})
+
+# # create test set
+# x_test = test_df[x_train.columns]
+# Y_test = pd.DataFrame(test_df, columns=["Diagnosis"]).replace({"B":0, "M":1})
+
+# classifier = LinearSVC()
+# classifier.fit(x_train, Y_train)
+
+# first_bracket_position = re.search("\(", str(classifier)).start()
+# model_name = str(classifier)[0:first_bracket_position]
+
+# features = x_train.columns
+
+# def feature_importance_plot(title):
+#     report = pd.DataFrame({"Feature": features, title: importances})
+#     print(tabulate(round(report, 3), headers='keys', tablefmt='psql'))
+
+#     # plot feature importance
+#     sns.set_theme(style = 'darkgrid')
+#     plt.bar([x for x in features], importances)
+#     plt.title(f"{model_name} {title}")
+#     plt.show()
+
+# if model_name == "LogisticRegression" or model_name == "SGDClassifier" or model_name == "LinearSVC":
+#     # https://machinelearningmastery.com/calculate-feature-importance-with-python/
+#     # https://stackoverflow.com/questions/66574982/how-can-we-interpret-feature-importances-for-stochastic-gradient-descent-classif
+
+#     importances = classifier.coef_[0]
+#     feature_importance_plot("Feature Coefficients")
+
+# elif model_name == "DecisionTreeClassifier" or model_name == "RandomForestClassifier" or model_name == "AdaBoostClassifier" or model_name == "GradientBoostingClassifier" or model_name == "XGBClassifier":
+#     # https://machinelearningmastery.com/calculate-feature-importance-with-python/
+
+#     importances = classifier.feature_importances_
+#     feature_importance_plot("Feature Importance")
+
+# elif model_name == "BaggingClassifier":
+#     # https://stackoverflow.com/questions/44333573/feature-importances-bagging-scikit-learn
+
+#     importances = np.mean([tree.feature_importances_ for tree in classifier.estimators_], axis=0)
+#     feature_importance_plot("Feature Importance")
+
+# elif model_name == "GaussianNB" or model_name == "SVC":
+#     # https://stackoverflow.com/questions/62933365/how-to-get-the-feature-importance-in-gaussian-naive-bayes
+    
+#     feature_importance = permutation_importance(classifier, x_test, Y_test)
+#     importances = feature_importance.importances_mean    
+#     feature_importance_plot("Feature Permutation Importance")
