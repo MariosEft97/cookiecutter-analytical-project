@@ -773,12 +773,19 @@ def feature_importance(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier
         features = X_train.columns
 
         def feature_importance_plot(title, ytitle):
-            report = pd.DataFrame({"Feature": features, title: importances})
+            feature_importance_dict = {features[i]: importances[i] for i in range(len(features))}
+            feature_importance_sorted = sorted(feature_importance_dict.items(), key=lambda x: x[1], reverse=True)
+            sorted_features = [x[0] for x in feature_importance_sorted]
+            sorted_importances = [x[1] for x in feature_importance_sorted]
+            report = pd.DataFrame({"Feature": features, title: importances, "Sorted Features (descending)": sorted_features, "Sorted "+title+" (descending)": sorted_importances})
             print(tabulate(round(report, 3), headers='keys', tablefmt='psql'))
 
             # plot feature importance
             sns.set_theme(style = 'darkgrid')
-            plt.bar([x for x in features], importances)
+            if len(features) > 20:
+                plt.bar([x for x in range(len(features))], importances)
+            else:
+                plt.bar([x for x in features], importances)
             plt.title(f"{model_name} {title}")
             plt.ylabel(ytitle)
             plt.xlabel("Features")
