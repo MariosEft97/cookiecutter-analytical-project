@@ -30,6 +30,7 @@ import plotly.figure_factory as ff
 from yellowbrick.classifier import ROCAUC
 from typing import Union, Any
 from sklearn.inspection import permutation_importance
+import shap
 
 ### GLOBAL VARIABLES ###
 # define the class of sklearn classifiers
@@ -816,7 +817,120 @@ def feature_importance(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier
             feature_importance = permutation_importance(classifier, X_test, y_test, scoring="accuracy")
             importances = feature_importance.importances_mean    
             feature_importance_plot(title="Feature Permutation Importance", ytitle="Mean accuracy decrease")
+        
+        return None
 
+### EXPLAINABLE ML FUNCTION ###
+def explainable_model(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, classifier: ClassifierModel) -> None:
+
+    '''
+    The function uses SHAP (SHapley Additive exPlanations) to increase transparency and interpretability of the machine learning model used.
+
+    Parameters:
+        train_df (Pandas DataFrame): data structure with loaded data (train sample)
+        test_df (Pandas DataFrame): data structure with loaded data (test sample)
+        identifier (list): identifier features of the dataset
+        target (str): target feature
+        classifier (ClassifierModel): sklearn classifier model
+
+    Returns:
+        None
+    '''
+        
+    if not isinstance(train_df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
+    
+    elif not isinstance(test_df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
+    
+    elif not isinstance(identifier, list):
+        error_message = "identifier must be specified as a list of strings"
+        raise TypeError(error_message)
+
+    elif not isinstance(target, str):
+        error_message = "target must be specified as a string"
+        raise TypeError(error_message)
+    
+    # elif not isinstance(classifier, ClassifierModel):
+    #     error_message = "classifier must be a ClassifierModel"
+    #     raise TypeError(error_message)
+    
+    else:
+        
+        # encode the target variables
+        lb = LabelEncoder()
+        encoded_train_target = lb.fit_transform(train_df[target])
+        encoded_test_target = lb.transform(test_df[target])
+
+        # create train set
+        X_train = train_df.drop(columns=[identifier[0], target])
+        y_train = pd.DataFrame(encoded_train_target, columns=[target])
+
+        # create test set
+        X_test = test_df[X_train.columns]
+        y_test = pd.DataFrame(encoded_test_target, columns=[target])
+
+        first_bracket_position = re.search("\(", str(classifier)).start()
+        model_name = str(classifier)[0:first_bracket_position]
+
+        features = X_train.columns
+
+        y_pred = classifier.predict(X_test)
+
+        features = X_train.columns
+
+        sns.set_theme(style = 'whitegrid')
+
+        if model_name == "LogisticRegression" or model_name == "SGDClassifier" or model_name == "LinearSVC" or model_name == "BaggingClassifier" or model_name == "GaussianNB" or model_name == "SVC" or model_name == "KNeighborsClassifier":
+            print(f"No SHAP technique available for {model_name} model.")
+        elif model_name == "DecisionTreeClassifier" or model_name == "RandomForestClassifier" or model_name == "AdaBoostClassifier" or model_name == "GradientBoostingClassifier" or model_name == "XGBClassifier":
+            explainer = shap.Explainer(classifier.predict, X_test)
+            shap_values = explainer(X_test)
+
+            fig1 = plt.figure()
+            ax0 = fig1.add_subplot(141).set_title("Bar Plot")
+            shap.plots.bar(shap_values, show = False)
+            ax1 = fig1.add_subplot(142).set_title("SHAP values")
+            shap.plots.bar(shap_values[0], show = False)
+            ax2 = fig1.add_subplot(143).set_title("SHAP base values")
+            shap.plots.bar(shap_values[1], show = False)
+            ax3 = fig1.add_subplot(144).set_title("SHAP data")
+            shap.plots.bar(shap_values[2], show = False)
+            plt.gcf().set_size_inches(40,10)
+            plt.tight_layout()
+            plt.show()
+
+            fig2 = plt.figure()
+            ax0 = fig2.add_subplot(131).set_title("Beeswarm")
+            shap.plots.beeswarm(shap_values, show = False)
+            ax1 = fig2.add_subplot(132).set_title("Summary plot")
+            shap.summary_plot(shap_values, show = False)
+            ax2 = fig2.add_subplot(133).set_title("Violin plot")
+            shap.summary_plot(shap_values, plot_type='violin', show=False)
+            plt.gcf().set_size_inches(18,6)
+            plt.tight_layout()
+            plt.show()
+
+            fig3 = plt.figure()
+            ax0 = fig3.add_subplot(131)
+            shap.plots.waterfall(shap_values[0], show = False)
+            plt.title("SHAP values")
+            ax1 = fig3.add_subplot(132)
+            shap.plots.waterfall(shap_values[1], show = False)
+            plt.title("SHAP base values")
+            ax2 = fig3.add_subplot(133)
+            shap.plots.waterfall(shap_values[2], show = False)
+            plt.title("SHAP data")
+            plt.gcf().set_size_inches(18,6)
+            plt.tight_layout()
+            plt.show()
+
+            for feature in features:
+                shap.plots.scatter(shap_values[:,feature], color=shap_values)
+                    
+        return None
 
 
 
