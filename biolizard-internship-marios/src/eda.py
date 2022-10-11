@@ -1221,6 +1221,7 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
         DBSCAN:
             epsilon (float): maximum distance between two samples for one to be considered as in the neighborhood of the other
             minimum_samples (int): number of samples (or total weight) in a neighborhood for a point to be considered as a core point (default=5)
+            algorithm (str): algorithm to be used by the NearestNeighbors module to compute pointwise distances and find nearest neighbors (auto, ball_tree, kd_tree, brute, default=auto)
            
     Returns:
         cluster_df (pd.DataFrame): data structure with loaded data
@@ -1391,8 +1392,9 @@ def clustering(df: pd.DataFrame, input_df: pd.DataFrame, identifier: list, targe
             # define dbscan hyperpamaters
             epsilon = float(list(kwargs.values())[0])
             minimum_samples = int(list(kwargs.values())[1])
+            algorithm = str(list(kwargs.values())[2])
 
-            dbscan = cluster.DBSCAN(eps=epsilon, min_samples=minimum_samples)
+            dbscan = cluster.DBSCAN(eps=epsilon, min_samples=minimum_samples, algorithm=algorithm)
             dbscan.fit(X)
 
             # silhouette = silhouette_score(X, dbscan.labels_)
