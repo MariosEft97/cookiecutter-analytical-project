@@ -927,8 +927,8 @@ def explainable_model(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier:
             plt.tight_layout()
             plt.show()
 
-            for feature in features:
-                shap.plots.scatter(shap_values[:,feature], color=shap_values)
+            # for feature in features:
+            #     shap.plots.scatter(shap_values[:,feature], color=shap_values)
                     
         return None
 
