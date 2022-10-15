@@ -717,7 +717,7 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
         return classifier
             
 ### FEATURE IMPORTANCE FUNCTION ###
-def feature_importance(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, classifier: ClassifierModel) -> None:
+def feature_importance(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, classifier: ClassifierModel, top_features_to_view: int) -> None:
     
     '''
     The function displays the feature importance of the given classifier.
@@ -728,6 +728,7 @@ def feature_importance(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier
         identifier (list): identifier features of the dataset
         target (str): target feature
         classifier (ClassifierModel): sklearn classifier model
+        top_features_to_view (int): number of most important features to view
     
     Returns:
         None
@@ -778,19 +779,46 @@ def feature_importance(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier
             feature_importance_sorted = sorted(feature_importance_dict.items(), key=lambda x: x[1], reverse=True)
             sorted_features = [x[0] for x in feature_importance_sorted]
             sorted_importances = [x[1] for x in feature_importance_sorted]
-            report = pd.DataFrame({"Feature": features, title: importances, "Sorted Features (descending)": sorted_features, "Sorted "+title+" (descending)": sorted_importances})
-            print(tabulate(round(report, 3), headers='keys', tablefmt='psql'))
 
-            # plot feature importance
-            sns.set_theme(style = 'darkgrid')
-            if len(features) > 20:
-                plt.bar([x for x in range(len(features))], importances)
+            if top_features_to_view > len(sorted_features):
+                print(f"The number of specified features ({top_features_to_view}) is greater than the number of available ones ({len(sorted_features)}).")
+                print(f"Please specify a number smaller than or equal to the number of available features ({len(sorted_features)}).")
+            
+            elif top_features_to_view == len(sorted_features):
+                report = pd.DataFrame({"Feature": features, title: importances, "Sorted Features (descending)": sorted_features, "Sorted "+title+" (descending)": sorted_importances})
+                print(tabulate(round(report, 3), headers='keys', tablefmt='psql'))
+
+                # plot feature importance
+                sns.set_theme(style = 'darkgrid')
+                if len(features) > 20:
+                    plt.bar([x for x in range(len(features))], importances)
+                else:
+                    plt.bar([x for x in features], importances)
+                    if len(sorted_features[0]) > 3:
+                        plt.xticks(rotation=90)
+
+                plt.title(f"{model_name} {title}")
+                plt.ylabel(ytitle)
+                plt.xlabel("Features")
+                plt.show()
+
             else:
-                plt.bar([x for x in features], importances)
-            plt.title(f"{model_name} {title}")
-            plt.ylabel(ytitle)
-            plt.xlabel("Features")
-            plt.show()
+                report = pd.DataFrame({"Top " + str(top_features_to_view) + " Features": sorted_features[0:top_features_to_view], title: sorted_importances[0:top_features_to_view]})
+                print(tabulate(round(report, 3), headers='keys', tablefmt='psql'))
+
+                # plot feature importance
+                sns.set_theme(style = 'darkgrid')
+                if len(sorted_features[0:top_features_to_view]) > 20:
+                    plt.bar([x for x in range(len(sorted_features[0:top_features_to_view]))], sorted_importances[0:top_features_to_view])
+                else:
+                    plt.bar([x for x in sorted_features[0:top_features_to_view]], sorted_importances[0:top_features_to_view])
+                    if len(sorted_features[0]) > 3:
+                        plt.xticks(rotation=90)
+                
+                plt.title(f"{model_name} {title}")
+                plt.ylabel(ytitle)
+                plt.xlabel(f"Top {top_features_to_view} Features")
+                plt.show()
         
         if model_name == "LogisticRegression" or model_name == "SGDClassifier" or model_name == "LinearSVC":
             # https://machinelearningmastery.com/calculate-feature-importance-with-python/
