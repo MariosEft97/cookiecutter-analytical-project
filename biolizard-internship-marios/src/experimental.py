@@ -692,3 +692,134 @@ def box_plot_v2(df: pd.DataFrame, features: list, categorical: list) -> None:
 #     feature_importance = permutation_importance(classifier, x_test, Y_test)
 #     importances = feature_importance.importances_mean    
 #     feature_importance_plot("Feature Permutation Importance")
+
+### SHAP
+
+# from sklearn.linear_model import LogisticRegression, SGDClassifier
+# from sklearn.tree import DecisionTreeClassifier
+# from sklearn.svm import SVC, LinearSVC
+# from sklearn.neighbors import KNeighborsClassifier
+# from sklearn.ensemble import BaggingClassifier, RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
+# from sklearn.naive_bayes import GaussianNB
+# from xgboost import XGBClassifier
+# import shap
+
+# import numpy as np
+# import pandas as pd
+# import matplotlib.pyplot as plt
+# import re
+# from sklearn.inspection import permutation_importance
+# from tabulate import tabulate
+# import seaborn as sns
+
+# # create train set
+# x_train = rfe_df.drop(columns=["ID", "Diagnosis"])
+# Y_train = pd.DataFrame(rfe_df, columns=["Diagnosis"]).replace({"B":0, "M":1})
+
+# # create test set
+# x_test = test_df[x_train.columns]
+# Y_test = pd.DataFrame(test_df, columns=["Diagnosis"]).replace({"B":0, "M":1})
+
+# x = X[x_train.columns]
+
+# classifier = RandomForestClassifier()
+# classifier.fit(x_train, Y_train)
+
+# first_bracket_position = re.search("\(", str(classifier)).start()
+# model_name = str(classifier)[0:first_bracket_position]
+
+# y_pred = classifier.predict(x_test)
+
+# features = x_train.columns
+
+# sns.set_theme(style = 'whitegrid')
+
+# if model_name == "LogisticRegression" or model_name == "SGDClassifier" or model_name == "LinearSVC" or model_name == "BaggingClassifier" or model_name == "GaussianNB" or model_name == "SVC" or model_name == "KNeighborsClassifier":
+#     print(f"No SHAP technique available for {model_name} model.")
+# elif model_name == "DecisionTreeClassifier" or model_name == "RandomForestClassifier" or model_name == "AdaBoostClassifier" or model_name == "GradientBoostingClassifier" or model_name == "XGBClassifier":
+#     explainer = shap.Explainer(classifier.predict, x_test)
+#     shap_values = explainer(x_test)
+
+# fig1 = plt.figure()
+# ax0 = fig1.add_subplot(141).set_title("Bar Plot")
+# shap.plots.bar(shap_values, show = False)
+# ax1 = fig1.add_subplot(142).set_title("SHAP values")
+# shap.plots.bar(shap_values[0], show = False)
+# ax2 = fig1.add_subplot(143).set_title("SHAP base values")
+# shap.plots.bar(shap_values[1], show = False)
+# ax3 = fig1.add_subplot(144).set_title("SHAP data")
+# shap.plots.bar(shap_values[2], show = False)
+# plt.gcf().set_size_inches(40,10)
+# plt.tight_layout()
+# plt.show()
+
+
+# fig2 = plt.figure()
+# ax0 = fig2.add_subplot(131).set_title("Beeswarm")
+# shap.plots.beeswarm(shap_values, show = False)
+# ax1 = fig2.add_subplot(132).set_title("Summary plot")
+# shap.summary_plot(shap_values, show = False)
+# ax2 = fig2.add_subplot(133).set_title("Violin plot")
+# shap.summary_plot(shap_values, plot_type='violin', show=False)
+# plt.gcf().set_size_inches(18,6)
+# plt.tight_layout()
+# plt.show()
+
+
+# fig3 = plt.figure()
+# ax0 = fig3.add_subplot(131)
+# shap.plots.waterfall(shap_values[0], show = False)
+# plt.title("SHAP values")
+# ax1 = fig3.add_subplot(132)
+# shap.plots.waterfall(shap_values[1], show = False)
+# plt.title("SHAP base values")
+# ax2 = fig3.add_subplot(133)
+# shap.plots.waterfall(shap_values[2], show = False)
+# plt.title("SHAP data")
+# plt.gcf().set_size_inches(18,6)
+# plt.tight_layout()
+# plt.show()
+
+
+# columns = 5
+# rows = len(features)/columns
+# fig4, axs = plt.subplots(int(rows), columns, figsize=(10, 18))
+# i = 0
+# j = 0
+# for feature in features:
+#     axs[i, j].add(shap.plots.scatter(shap_values[:,feature], color=shap_values))
+#     j = j + 1
+#     if (j > 1):
+#         j = 0
+#         i = i + 1
+
+
+
+# fig4 = plt.figure()
+# ax0 = fig4.add_subplot(151)
+# shap.plots.scatter(shap_values[:,features[0]], color=shap_values, show=False)
+# ax1 = fig4.add_subplot(152)
+# shap.plots.scatter(shap_values[:,features[1]], color=shap_values, show=False)
+# ax2 = fig4.add_subplot(153)
+# shap.plots.scatter(shap_values[:,features[2]], color=shap_values, show=False)
+# ax3 = fig4.add_subplot(154)
+# shap.plots.scatter(shap_values[:,features[3]], color=shap_values, show=False)
+# ax4 = fig4.add_subplot(155)
+# shap.plots.scatter(shap_values[:,features[4]], color=shap_values, show=False)
+# plt.gcf().set_size_inches(18,6)
+# plt.tight_layout()
+# plt.show()
+
+# for i, feature in enumerate(features[0:9]):
+#     # if i+1 <= 9
+#     dimensions = 500 + 30 + i + 1
+#     ax = fig4.add_subplot(dimensions)
+#     shap.plots.scatter(shap_values[:,feature], color=shap_values)
+
+
+# columns = 3
+# rows = int(len(features)/columns)
+# fig4 = plt.figure()
+# for i, feature in enumerate(features[0:8]):
+#     ax = fig4.add_subplot(1, columns, i+1)
+#     shap.plots.scatter(shap_values[:,feature], color=shap_values)

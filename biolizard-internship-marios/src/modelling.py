@@ -1,5 +1,6 @@
 # LOAD PACKAGES
 import sys
+from turtle import color
 sys.path.append(r"C:\Users\35799\Desktop\cookiecutter-analytical-project\biolizard-internship-marios\src")
 import pandas as pd
 from IPython.display import display
@@ -27,10 +28,12 @@ from sklearn.metrics import *
 from sklearn.model_selection import GridSearchCV
 import plotly.express as px
 import plotly.figure_factory as ff
+import plotly.graph_objects as go
 from yellowbrick.classifier import ROCAUC
 from typing import Union, Any
 from sklearn.inspection import permutation_importance
 import shap
+# from BorutaShap import BorutaShap
 
 ### GLOBAL VARIABLES ###
 # define the class of sklearn classifiers
@@ -717,7 +720,7 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
         return classifier
             
 ### FEATURE IMPORTANCE FUNCTION ###
-def feature_importance(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, classifier: ClassifierModel, top_features_to_view: int) -> None:
+def feature_importance(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, classifier: ClassifierModel, top_features_to_view: int, use_boruta_shap: bool, **kwargs) -> None:
     
     '''
     The function displays the feature importance of the given classifier.
@@ -729,6 +732,11 @@ def feature_importance(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier
         target (str): target feature
         classifier (ClassifierModel): sklearn classifier model
         top_features_to_view (int): number of most important features to view
+        use_boruta_shap (bool): compute featute importance using Boruta-Shap module (True or False)
+
+        **kwrags:
+            Boruta-Shap:
+
     
     Returns:
         None
@@ -753,6 +761,14 @@ def feature_importance(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier
     # elif not isinstance(classifier, ClassifierModel):
     #     error_message = "classifier must be a ClassifierModel"
     #     raise TypeError(error_message)
+
+    elif not isinstance(top_features_to_view, int):
+        error_message = "top_features_to_view must be specified as an integer number"
+        raise TypeError(error_message)
+    
+    elif not isinstance(use_boruta_shap, bool):
+        error_message = "use_boruta_shap must be specified as a boolean value"
+        raise TypeError(error_message)
     
     else:
 
@@ -774,82 +790,97 @@ def feature_importance(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier
 
         features = X_train.columns
 
-        def feature_importance_plot(title, ytitle):
-            feature_importance_dict = {features[i]: importances[i] for i in range(len(features))}
-            feature_importance_sorted = sorted(feature_importance_dict.items(), key=lambda x: x[1], reverse=True)
-            sorted_features = [x[0] for x in feature_importance_sorted]
-            sorted_importances = [x[1] for x in feature_importance_sorted]
+        if use_boruta_shap == False:
 
-            if top_features_to_view > len(sorted_features):
-                print(f"The number of specified features ({top_features_to_view}) is greater than the number of available ones ({len(sorted_features)}).")
-                print(f"Please specify a number smaller than or equal to the number of available features ({len(sorted_features)}).")
-            
-            elif top_features_to_view == len(sorted_features):
-                report = pd.DataFrame({"Feature": features, title: importances, "Sorted Features (descending)": sorted_features, "Sorted "+title+" (descending)": sorted_importances})
-                print(tabulate(round(report, 3), headers='keys', tablefmt='psql'))
+            def feature_importance_plot(title, ytitle):
+                feature_importance_dict = {features[i]: importances[i] for i in range(len(features))}
+                feature_importance_sorted = sorted(feature_importance_dict.items(), key=lambda x: x[1], reverse=True)
+                sorted_features = [x[0] for x in feature_importance_sorted]
+                sorted_importances = [x[1] for x in feature_importance_sorted]
 
-                # plot feature importance
-                sns.set_theme(style = 'darkgrid')
-                if len(features) > 20:
-                    plt.bar([x for x in range(len(features))], importances)
-                else:
-                    plt.bar([x for x in features], importances)
-                    if len(sorted_features[0]) > 3:
-                        plt.xticks(rotation=90)
-
-                plt.title(f"{model_name} {title}")
-                plt.ylabel(ytitle)
-                plt.xlabel("Features")
-                plt.show()
-
-            else:
-                report = pd.DataFrame({"Top " + str(top_features_to_view) + " Features": sorted_features[0:top_features_to_view], title: sorted_importances[0:top_features_to_view]})
-                print(tabulate(round(report, 3), headers='keys', tablefmt='psql'))
-
-                # plot feature importance
-                sns.set_theme(style = 'darkgrid')
-                if len(sorted_features[0:top_features_to_view]) > 20:
-                    plt.bar([x for x in range(len(sorted_features[0:top_features_to_view]))], sorted_importances[0:top_features_to_view])
-                else:
-                    plt.bar([x for x in sorted_features[0:top_features_to_view]], sorted_importances[0:top_features_to_view])
-                    if len(sorted_features[0]) > 3:
-                        plt.xticks(rotation=90)
+                if top_features_to_view > len(sorted_features):
+                    print(f"The number of specified features ({top_features_to_view}) is greater than the number of available ones ({len(sorted_features)}).")
+                    print(f"Please specify a number smaller than or equal to the number of available features ({len(sorted_features)}).")
                 
-                plt.title(f"{model_name} {title}")
-                plt.ylabel(ytitle)
-                plt.xlabel(f"Top {top_features_to_view} Features")
-                plt.show()
-        
-        if model_name == "LogisticRegression" or model_name == "SGDClassifier" or model_name == "LinearSVC":
-            # https://machinelearningmastery.com/calculate-feature-importance-with-python/
-            # https://stackoverflow.com/questions/66574982/how-can-we-interpret-feature-importances-for-stochastic-gradient-descent-classif
+                elif top_features_to_view == len(sorted_features):
+                    report = pd.DataFrame({"Feature": features, title: importances, "Sorted Features (descending)": sorted_features, "Sorted "+title+" (descending)": sorted_importances})
+                    print(tabulate(round(report, 3), headers='keys', tablefmt='psql'))
 
-            importances = classifier.coef_[0]
-            feature_importance_plot(title="Feature Coefficients", ytitle="Coefficients values")
+                    # plot feature importance
+                    sns.set_theme(style = 'darkgrid')
+                    if len(features) > 20:
+                        plt.bar([x for x in range(len(features))], importances)
+                    else:
+                        plt.bar([x for x in features], importances)
+                        if len(sorted_features[0]) > 3:
+                            plt.xticks(rotation=90)
 
-        elif model_name == "DecisionTreeClassifier" or model_name == "RandomForestClassifier" or model_name == "AdaBoostClassifier" or model_name == "GradientBoostingClassifier" or model_name == "XGBClassifier":
-            # https://machinelearningmastery.com/calculate-feature-importance-with-python/
+                    plt.title(f"{model_name} {title}")
+                    plt.ylabel(ytitle)
+                    plt.xlabel("Features")
+                    plt.show()
 
-            importances = classifier.feature_importances_
-            feature_importance_plot(title="Feature Importance", ytitle="Mean decrease in impurity")
+                else:
+                    report = pd.DataFrame({"Top " + str(top_features_to_view) + " Features": sorted_features[0:top_features_to_view], title: sorted_importances[0:top_features_to_view]})
+                    print(tabulate(round(report, 3), headers='keys', tablefmt='psql'))
 
-        elif model_name == "BaggingClassifier":
-            # https://stackoverflow.com/questions/44333573/feature-importances-bagging-scikit-learn
-
-            importances = np.mean([tree.feature_importances_ for tree in classifier.estimators_], axis=0)
-            feature_importance_plot(title="Feature Importance", ytitle="Mean decrease in impurity")
-
-        elif model_name == "GaussianNB" or model_name == "SVC" or model_name == "KNeighborsClassifier":
-            # https://stackoverflow.com/questions/62933365/how-to-get-the-feature-importance-in-gaussian-naive-bayes
+                    # plot feature importance
+                    sns.set_theme(style = 'darkgrid')
+                    if len(sorted_features[0:top_features_to_view]) > 20:
+                        plt.bar([x for x in range(len(sorted_features[0:top_features_to_view]))], sorted_importances[0:top_features_to_view])
+                    else:
+                        plt.bar([x for x in sorted_features[0:top_features_to_view]], sorted_importances[0:top_features_to_view])
+                        if len(sorted_features[0]) > 3:
+                            plt.xticks(rotation=90)
+                    
+                    plt.title(f"{model_name} {title}")
+                    plt.ylabel(ytitle)
+                    plt.xlabel(f"Top {top_features_to_view} Features")
+                    plt.show()
             
-            feature_importance = permutation_importance(classifier, X_test, y_test, scoring="accuracy")
-            importances = feature_importance.importances_mean    
-            feature_importance_plot(title="Feature Permutation Importance", ytitle="Mean accuracy decrease")
+            if model_name == "LogisticRegression" or model_name == "SGDClassifier" or model_name == "LinearSVC":
+                # https://machinelearningmastery.com/calculate-feature-importance-with-python/
+                # https://stackoverflow.com/questions/66574982/how-can-we-interpret-feature-importances-for-stochastic-gradient-descent-classif
+
+                importances = classifier.coef_[0]
+                feature_importance_plot(title="Feature Coefficients", ytitle="Coefficients values")
+
+            elif model_name == "DecisionTreeClassifier" or model_name == "RandomForestClassifier" or model_name == "AdaBoostClassifier" or model_name == "GradientBoostingClassifier" or model_name == "XGBClassifier":
+                # https://machinelearningmastery.com/calculate-feature-importance-with-python/
+
+                importances = classifier.feature_importances_
+                feature_importance_plot(title="Feature Importance", ytitle="Mean decrease in impurity")
+
+            elif model_name == "BaggingClassifier":
+                # https://stackoverflow.com/questions/44333573/feature-importances-bagging-scikit-learn
+
+                importances = np.mean([tree.feature_importances_ for tree in classifier.estimators_], axis=0)
+                feature_importance_plot(title="Feature Importance", ytitle="Mean decrease in impurity")
+
+            elif model_name == "GaussianNB" or model_name == "SVC" or model_name == "KNeighborsClassifier":
+                # https://stackoverflow.com/questions/62933365/how-to-get-the-feature-importance-in-gaussian-naive-bayes
+                
+                feature_importance = permutation_importance(classifier, X_test, y_test, scoring="accuracy")
+                importances = feature_importance.importances_mean    
+                feature_importance_plot(title="Feature Permutation Importance", ytitle="Mean accuracy decrease")
         
+        elif use_boruta_shap == True:
+            print("BorutaShap package is not available through conda...")
+
+            # fature_selector = BorutaShap(model=classifier, importance_measure="shap", classification=True)
+
+            # feature_selector.fit(X=X_train, y=y_train, n_trials=100, sample=False, train_or_test = 'test', normalize=True, verbose=True)
+
+            # # Returns Boxplot of features
+            # feature_selector.plot(which_features='all')
+
+            # # Returns a subset of the original data with the selected features
+            # subset = feature_selector.Subset()
+
         return None
 
-### EXPLAINABLE ML FUNCTION ###
-def explainable_model(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, classifier: ClassifierModel) -> None:
+### SHAP VALUE ANALYSIS FUNCTION ###
+def shap_value_analysis(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, classifier: ClassifierModel) -> None:
 
     '''
     The function uses SHAP (SHapley Additive exPlanations) to increase transparency and interpretability of the machine learning model used.
@@ -902,8 +933,6 @@ def explainable_model(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier:
 
         first_bracket_position = re.search("\(", str(classifier)).start()
         model_name = str(classifier)[0:first_bracket_position]
-
-        features = X_train.columns
 
         y_pred = classifier.predict(X_test)
 
@@ -960,7 +989,102 @@ def explainable_model(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier:
                     
         return None
 
+### EVENT CHART FUNCTION ###
+def event_chart(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, classifier: ClassifierModel) -> None:
+    
+    '''
+    The function plots a chart event.
 
+    Parameters:
+        train_df (Pandas DataFrame): data structure with loaded data (train sample)
+        test_df (Pandas DataFrame): data structure with loaded data (test sample)
+        identifier (list): identifier features of the dataset
+        target (str): target feature
+        classifier (ClassifierModel): sklearn classifier model
+
+    Returns:
+        None
+    '''
+        
+    if not isinstance(train_df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
+    
+    elif not isinstance(test_df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
+    
+    elif not isinstance(identifier, list):
+        error_message = "identifier must be specified as a list of strings"
+        raise TypeError(error_message)
+
+    elif not isinstance(target, str):
+        error_message = "target must be specified as a string"
+        raise TypeError(error_message)
+    
+    # elif not isinstance(classifier, ClassifierModel):
+    #     error_message = "classifier must be a ClassifierModel"
+    #     raise TypeError(error_message)
+    
+    else:
+        
+        # encode the target variables
+        lb = LabelEncoder()
+        encoded_train_target = lb.fit_transform(train_df[target])
+        encoded_test_target = lb.transform(test_df[target])
+
+        # create train set
+        X_train = train_df.drop(columns=[identifier[0], target])
+        y_train = pd.DataFrame(encoded_train_target, columns=[target])
+
+        # create test set
+        X_test = test_df[X_train.columns]
+        y_test = pd.DataFrame(encoded_test_target, columns=[target])
+
+        first_bracket_position = re.search("\(", str(classifier)).start()
+        model_name = str(classifier)[0:first_bracket_position]
+
+        y_pred = classifier.predict(X_test)
+        y_prob = classifier.predict_proba(X_test)[:,1]
+
+        features = X_train.columns
+
+        # print(len(y_prob))
+        # print(len(y_pred))
+        # print(len(y_test))
+        # print(len(test_df[identifier[0]]))
+
+        df = pd.DataFrame({"Sample": test_df[identifier[0]], "Model Score": y_prob, "Model Prediction": y_pred, "True Class": list(test_df[target])})
+        df.sort_values(by="Model Score", ascending=True, inplace=True, ignore_index=True)
+
+        # display(df)
+
+        # # Create traces
+        # fig = go.Figure()
+        
+        # fig.add_trace(go.Scatter(x=[i for i in range(len(df["Sample"]))], y=round(df["Model Score"], 3), mode='lines+markers', name='Model Score'))
+
+        fig = px.scatter(df, x=[i for i in range(len(df["Sample"]))], y=round(df["Model Score"], 3), color="True Class")
+
+        fig.update_layout(
+            
+            title=f'Event Chart (Model: {model_name})',
+            
+            xaxis = dict(
+                title="Samples",
+                tickmode = 'array',
+                tickvals = [i for i in range(len(df["Sample"]))],
+                ticktext = [str(i) for i in list(df["Sample"])]
+            ),
+            
+            yaxis = dict(
+                title="Model Score"
+            )
+        )
+        
+        fig.show()
+
+        return None
 
         
 
