@@ -34,6 +34,7 @@ from typing import Union, Any
 from sklearn.inspection import permutation_importance
 import shap
 # from BorutaShap import BorutaShap
+from tpot import TPOTClassifier
 
 ### GLOBAL VARIABLES ###
 # define the class of sklearn classifiers
@@ -1086,6 +1087,174 @@ def event_chart(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list,
 
         return None
 
+### AUTO CLASSIFICATION FUNCTION ###
+def tpot_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, generations: int, population_size: int, max_time_mins: int) -> None:
+    '''
+    The function permorms the modelling steps (fitting, hyperparameter tuning) automatically.
+
+    Parameters:
+        train_df (Pandas DataFrame): data structure with loaded data (train sample)
+        test_df (Pandas DataFrame): data structure with loaded data (test sample)
+        identifier (list): identifier features of the dataset
+        target (str): target feature
+        generations (int): number of iterations to run the pipeline optimization process (integer or None, default=None)
+        population_size (int): number of individuals to retain in the GP population every generation (integer or None, default=None)
+        max_time_mins (int): many minutes TPOT has to optimize the pipeline (integer or None)
+
+    Returns:
+        None
+    '''
+
+    if not isinstance(train_df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
+    
+    elif not isinstance(test_df, pd.DataFrame):
+        error_message = "df must be specified as a Pandas DataFrame"
+        raise TypeError(error_message)
+    
+    elif not isinstance(identifier, list):
+        error_message = "identifier must be specified as a list of strings"
+        raise TypeError(error_message)
+
+    elif not isinstance(target, str):
+        error_message = "target must be specified as a string"
+        raise TypeError(error_message)
+
+    # elif not isinstance(generations, int):
+    #     error_message = "generations must be specified as an integer value or None"
+    #     raise TypeError(error_message)
+    
+    # elif not isinstance(population_size, int):
+    #     error_message = "population_size must be specified as an integer value or None"
+    #     raise TypeError(error_message)
+    
+    # elif not isinstance(max_time_mins, int):
+    #     error_message = "max_time_mins must be specified as an integer value or None"
+    #     raise TypeError(error_message)
+
+    else:   
+        
+        # encode the target variables
+        lb = LabelEncoder()
+        encoded_train_target = lb.fit_transform(train_df[target])
+        encoded_test_target = lb.transform(test_df[target])
+
+        # create train set
+        X_train = train_df.drop(columns=[identifier[0], target])
+        y_train = pd.DataFrame(encoded_train_target, columns=["target"])
+
+        # create test set
+        X_test = test_df[X_train.columns]
+        y_test = pd.DataFrame(encoded_test_target, columns=["target"])
+
+        tpot = TPOTClassifier(generations=generations, population_size=population_size, verbosity=2, max_time_mins=max_time_mins)
+
+        def fit_tpot(tpot, X, y):
+            tpot.fit(X, y)
+            return tpot
+        
+        tpot = fit_tpot(tpot, X_train, y_train)
+
+        best_pipeline = str(tpot.export())
+
+        custom_best_pipeline = str()
+
+        hastag_positions = [match.start() for match in re.finditer("#", best_pipeline)]
+        newline_positions = [match.start() for match in re.finditer("\n", best_pipeline)]
+
+        custom_best_pipeline += "def run_tpot_pipeline():\n\t"
+
+        for index, character in enumerate(best_pipeline):
+
+            if index < hastag_positions[0]:
+                custom_best_pipeline += character
+
+            elif index == hastag_positions[0]:
+                custom_best_pipeline += "# NOTE: Make sure that the outcome column is labeled 'target' in the data file:\n"
+                custom_best_pipeline += "training_features=X_train\n"
+                custom_best_pipeline += "training_target=y_train\n"
+                custom_best_pipeline += "testing_features=X_test\n"
+                custom_best_pipeline += "testing_target=y_test\n"
+                
+            elif  hastag_positions[0] < index < hastag_positions[1]:
+                pass
+
+            elif index >= hastag_positions[1]:
+                custom_best_pipeline += character
+    
+        # custom_best_pipeline += "probs=exported_pipeline.predict_proba(testing_features)"
+        custom_best_pipeline += "\nreturn_me = [results]\n"
+
+        loc = {}
+        exec(custom_best_pipeline, locals(), loc)
+        returns = loc["return_me"]
+
+        y_pred = returns[0] 
+        # y_prob = returns[1]
+
+        bracket_positions = [match.start() for match in re.finditer("\(", custom_best_pipeline)]
+        exported_pipeline_position = re.search("exported_pipeline = ", custom_best_pipeline).end()
+        for index in bracket_positions:
+            if index > exported_pipeline_position:     
+                correct_bracket_position = index
+                break
+        model_name = custom_best_pipeline[exported_pipeline_position:correct_bracket_position]
+
+        # confusion matrix
+        cm = confusion_matrix(y_test, y_pred)
+        cm_df = pd.DataFrame(cm, index=sorted(train_df[target].unique()), columns=sorted(train_df[target].unique()))
+
+        # # Roc Curve
+        # false_positive_rate, true_positive_rate, _ = roc_curve(y_test, y_prob)
+        # roc_auc = auc(false_positive_rate, true_positive_rate)
+
+        # # Precision-Recall curve
+        # precision_, recall_, _ = precision_recall_curve(y_test, y_prob)     
+        
+        # classification metrics
+        recall = recall_score(y_test, y_pred)
+        precision = precision_score(y_test, y_pred)
+        accuracy = accuracy_score(y_test, y_pred)
+        f1 = f1_score(y_test, y_pred)
+
+        # print(f"\nPerformance of best performing model ({model_name}) on the test set:")
+        # bpm_results = pd.DataFrame({"Model": [model_name], "Accuracy": [accuracy], "Recall": [recall], "Precision": [precision], "F1 score": [f1], "ROC AUC": [roc_auc_score(y_test, y_prob)]})
+        # print(tabulate(round(bpm_results, 3), headers='keys', tablefmt='psql'))
+
+        # results = {"accuracy":[accuracy],"recall":[recall], "precision":[precision], "f1":[f1] "AUC":[roc_auc_score(y_test, y_prob)]}
+  
+        # Visualizing Confusion Matrix
+        group_names = ["True Negative","False Positive","False Negative","True Positive"]
+        group_counts = ["{0:0.0f}".format(value) for value in cm.flatten()]
+        group_percentages = ["{0:.2%}".format(value) for value in cm.flatten()/np.sum(cm)]
+        labels = [f"{v1}\n{v2}\n{v3}" for v1, v2, v3 in zip(group_names, group_counts, group_percentages)]
+        labels = np.asarray(labels).reshape(2,2)
+        sns.heatmap(cm_df, annot=labels, fmt="", cmap="YlGnBu", cbar=False)
+        plt.title(label = "Confusion Matrix")
+        plt.show()
+
+        # # Visualizing ROC Curve
+        # sns.set_theme(style = 'white')
+        # # plt.figure(figsize = (8, 8))
+        # plt.plot(false_positive_rate, true_positive_rate, color = '#b01717', label = 'AUC = %0.3f' % roc_auc)
+        # plt.legend(loc = 'lower right')
+        # plt.plot([0, 1], [0, 1], linestyle = '--', color = '#174ab0')
+        # plt.axis('tight')
+        # plt.title(label = "ROC curve")
+        # plt.ylabel('True Positive Rate')
+        # plt.xlabel('False Positive Rate')
+        # plt.show()
+
+        # # Visualizing Precision-Recall Curve
+        # plt.plot(recall_, precision_, color = '#b01717')
+        # plt.axis('tight')
+        # plt.title(label = "Precision-Recall curve")
+        # plt.ylabel('Precision')
+        # plt.xlabel('Recall')
+        # plt.show()
+
+        return None
         
 
 

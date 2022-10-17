@@ -823,3 +823,95 @@ def box_plot_v2(df: pd.DataFrame, features: list, categorical: list) -> None:
 # for i, feature in enumerate(features[0:8]):
 #     ax = fig4.add_subplot(1, columns, i+1)
 #     shap.plots.scatter(shap_values[:,feature], color=shap_values)
+
+### TPOT
+
+# from tpot import TPOTClassifier
+# from sklearn.preprocessing import LabelEncoder
+
+# # encode the target variables
+# lb = LabelEncoder()
+# encoded_train_target = lb.fit_transform(rfe_df["Diagnosis"])
+# encoded_test_target = lb.transform(test_df["Diagnosis"])
+
+# # create train set
+# X_train_tpot = rfe_df.drop(columns=["ID", "Diagnosis"])
+# y_train_tpot = pd.DataFrame(encoded_train_target, columns=["target"])
+
+# # create test set
+# X_test_tpot = test_df[X_train_tpot.columns]
+# y_test_tpot = pd.DataFrame(encoded_test_target, columns=["target"])
+
+# tpot = TPOTClassifier(generations=None, population_size=100, verbosity=2, max_time_mins=1, )
+# tpot.fit(X_train_tpot, y_train_tpot)
+
+# best_pipeline = str(tpot.export())
+
+# print(best_pipeline)
+
+# import re
+
+# custom_best_pipeline = ''''''
+
+# hastag_positions = [match.start() for match in re.finditer("#", best_pipeline)]
+# newline_positions = [match.start() for match in re.finditer("\n", best_pipeline)]
+
+# # for index, character in enumerate(best_pipeline):
+    
+# #     if index < hastag_positions[0]:
+# #         print(character, sep="", end="")
+
+# #     elif index == hastag_positions[0]:
+# #         print("# NOTE: Make sure that the outcome column is labeled 'target' in the data file:")
+# #         print("training_features=X_train_tpot")
+# #         print("training_target=y_train_tpot")
+# #         print("testing_features=X_test_tpot")
+# #         print("testing_target=y_test_tpot")
+# #         print("\n")
+    
+# #     elif  hastag_positions[0] < index < hastag_positions[1]:
+# #         pass
+
+# #     elif index >= hastag_positions[1]:
+# #         print(character, sep="", end="")
+
+# # custom_best_pipeline += "def run_tpot_pipeline():\n\t"
+
+# for index, character in enumerate(best_pipeline):
+
+#     if index < hastag_positions[0]:
+#         custom_best_pipeline += character
+#         # if index in newline_positions:
+#         #     custom_best_pipeline += "\t"
+
+#     elif index == hastag_positions[0]:
+#         custom_best_pipeline += "# NOTE: Make sure that the outcome column is labeled 'target' in the data file:\n"
+#         custom_best_pipeline += "training_features=X_train_tpot\n"
+#         custom_best_pipeline += "training_target=y_train_tpot\n"
+#         custom_best_pipeline += "testing_features=X_test_tpot\n"
+#         custom_best_pipeline += "testing_target=y_test_tpot\n"
+        
+#     elif  hastag_positions[0] < index < hastag_positions[1]:
+#         pass
+
+#     elif index >= hastag_positions[1]:
+#         custom_best_pipeline += character
+#         # if index in newline_positions:
+#         #     custom_best_pipeline += "\t"
+# custom_best_pipeline += "probs=exported_pipeline.predict_proba(testing_features)"
+# custom_best_pipeline += "\nreturn_me = [results, probs]\n"
+# # custom_best_pipeline += "\nrun_tpot_pipeline()"
+
+# print(custom_best_pipeline)
+
+# loc = {}
+# exec(custom_best_pipeline, globals(), loc)
+# returns = loc["return_me"]
+
+# bracket_positions = [match.start() for match in re.finditer("\(", custom_best_pipeline)]
+# exported_pipeline_position = re.search("exported_pipeline = ", custom_best_pipeline).end()
+# for index in bracket_positions:
+#     if index > exported_pipeline_position:     
+#         correct_bracket_position = index
+#         break
+# model_name = custom_best_pipeline[exported_pipeline_position:correct_bracket_position]
