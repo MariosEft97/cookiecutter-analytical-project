@@ -358,7 +358,7 @@ def binary_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identif
         accuracy = accuracy_score(y_test, y_pred)
         f1 = f1_score(y_test, y_pred)
 
-        print(f"\nPerformance of best performing model ({best_performing_model}) on the test set:")
+        print(f"\nTest set performance of best performing model ({best_performing_model}) on the train set:")
         bpm_results = pd.DataFrame({"Model": [best_performing_model], "Accuracy": [accuracy], "Recall": [recall], "Precision": [precision], "F1 score": [f1], "ROC AUC": [roc_auc_score(y_test, y_prob)]})
         print(tabulate(round(bpm_results, 3), headers='keys', tablefmt='psql'))
 
@@ -586,48 +586,6 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
         # confusion matrix
         cm = confusion_matrix(y_test, y_pred)
 
-        # X_train2 = train_df.drop(columns=[identifier[0], target])
-        # y_train_initial = train_df[[target]]
-        # y_train2 = label_binarize(y_train_initial, classes=range(len(train_df[target].unique())))
-
-        # # create test set
-        # X_test2 = test_df[X_train.columns]
-        # y_test_initial = test_df[[target]]
-        # y_test2 = label_binarize(y_test_initial, classes=range(len(train_df[target].unique())))
-
-        # n_classes = y_test2.shape[1]
-
-        # # Learn to predict each class against the other
-        # classifier2 = OneVsRestClassifier(tuned_models_hyperparameters[best_performing_model])
-        # y_score = classifier2.fit(X_train2, y_train2).decision_function(X_test2)
-
-        # # Compute ROC curve and ROC area for each class
-        # fpr = dict()
-        # tpr = dict()
-        # roc_auc = dict()
-        # for i in range(n_classes):
-        #     fpr[i], tpr[i], _ = roc_curve(y_test2[:, i], y_score[:, i])
-        #     roc_auc[i] = auc(fpr[i], tpr[i])
-        
-        # # Compute micro-average ROC curve and ROC area
-        # fpr["micro"], tpr["micro"], _ = roc_curve(y_test2.ravel(), y_score.ravel())
-        # roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
-
-        # # First aggregate all false positive rates
-        # all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
-
-        # # Then interpolate all ROC curves at this points
-        # mean_tpr = np.zeros_like(all_fpr)
-        # for i in range(n_classes):
-        #     mean_tpr += np.interp(all_fpr, fpr[i], tpr[i])
-
-        # # Finally average it and compute AUC
-        # mean_tpr /= n_classes
-
-        # fpr["macro"] = all_fpr
-        # tpr["macro"] = mean_tpr
-        # roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
-
         # classification metrics
         recall = recall_score(y_test, y_pred, average="weighted")
         precision = precision_score(y_test, y_pred, average="weighted")
@@ -635,7 +593,7 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
         f1 = f1_score(y_test, y_pred, average="weighted")
         kappa = cohen_kappa_score(y_test, y_pred)
 
-        print(f"\nPerformance of best performing model ({best_performing_model}) on the test set:")
+        print(f"\nTest set performance of best performing model ({best_performing_model}) on the train set:")
         bpm_results = pd.DataFrame({"Model": [best_performing_model], "Accuracy": [accuracy], "Recall": [recall], "Precision": [precision], "F1 score": [f1], "Cohen's kappa": [kappa]})
         print(tabulate(round(bpm_results, 3), headers='keys', tablefmt='psql'))
 
@@ -658,65 +616,6 @@ def multiclass_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, ide
         roc_visualizer.fit(X_train, y_train)
         roc_visualizer.score(X_test, y_test)
         roc_visualizer.show()
-
-        # lw = 2
-        
-        # # Plot all ROC curves
-        # plt.figure()
-        # plt.plot(
-        #     fpr["micro"],
-        #     tpr["micro"],
-        #     label="micro-average ROC curve (area = {0:0.2f})".format(roc_auc["micro"]),
-        #     color="deeppink",
-        #     linestyle=":",
-        #     linewidth=4,
-        # )
-
-        # plt.plot(
-        #     fpr["macro"],
-        #     tpr["macro"],
-        #     label="macro-average ROC curve (area = {0:0.2f})".format(roc_auc["macro"]),
-        #     color="navy",
-        #     linestyle=":",
-        #     linewidth=4,
-        # )
-
-        # colors = cycle(["aqua", "darkorange", "cornflowerblue", "yellow"])
-        # for i, color in zip(range(n_classes), colors):
-        #     plt.plot(
-        #         fpr[i],
-        #         tpr[i],
-        #         color=color,
-        #         lw=lw,
-        #         label="ROC curve of class {0} (area = {1:0.2f})".format(i, roc_auc[i]),
-        #     )
-
-        # plt.plot([0, 1], [0, 1], color="navy", lw=lw, linestyle="--")
-        # plt.xlim([0.0, 1.0])
-        # plt.ylim([0.0, 1.05])
-        # plt.xlabel("False Positive Rate")
-        # plt.ylabel("True Positive Rate")
-        # plt.title("Multiclass ROC curve")
-        # plt.legend(loc="lower right")
-        # plt.show()
-
-        # sns.set_theme(style = 'white')
-        # # plt.figure(figsize = (8, 8))
-        # plt.plot(false_positive_rate, true_positive_rate, color = '#b01717', label = 'AUC = %0.3f' % roc_auc)
-        # plt.legend(loc = 'lower right')
-        # plt.plot([0, 1], [0, 1], linestyle = '--', color = '#174ab0')
-        # plt.axis('tight')
-        # plt.title(label = "ROC curve")
-        # plt.ylabel('True Positive Rate')
-        # plt.xlabel('False Positive Rate')
-        # plt.show()
-    
-        # plt.plot(recall_, precision_, color = '#b01717')
-        # plt.axis('tight')
-        # plt.title(label = "Precision-Recall curve")
-        # plt.ylabel('Precision')
-        # plt.xlabel('Recall')
-        # plt.show()
 
         return classifier
             
@@ -1088,7 +987,7 @@ def event_chart(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list,
         return None
 
 ### AUTO CLASSIFICATION FUNCTION ###
-def tpot_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, generations: int, population_size: int, max_time_mins: int) -> None:
+def tpot_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, target_type: str,  generations: int, population_size: int, max_time_mins: int) -> None:
     '''
     The function permorms the modelling steps (fitting, hyperparameter tuning) automatically.
 
@@ -1097,6 +996,7 @@ def tpot_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identifie
         test_df (Pandas DataFrame): data structure with loaded data (test sample)
         identifier (list): identifier features of the dataset
         target (str): target feature
+        target_type (str): target feature type (binary or multiclass)
         generations (int): number of iterations to run the pipeline optimization process (integer or None, default=None)
         population_size (int): number of individuals to retain in the GP population every generation (integer or None, default=None)
         max_time_mins (int): many minutes TPOT has to optimize the pipeline (integer or None)
@@ -1119,6 +1019,10 @@ def tpot_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identifie
 
     elif not isinstance(target, str):
         error_message = "target must be specified as a string"
+        raise TypeError(error_message)
+    
+    elif not isinstance(target_type, str):
+        error_message = "target_type must be specified as a string\noptions: binary or multiclass"
         raise TypeError(error_message)
 
     # elif not isinstance(generations, int):
@@ -1193,13 +1097,13 @@ def tpot_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identifie
         y_pred = returns[0] 
         # y_prob = returns[1]
 
-        bracket_positions = [match.start() for match in re.finditer("\(", custom_best_pipeline)]
-        exported_pipeline_position = re.search("exported_pipeline = ", custom_best_pipeline).end()
-        for index in bracket_positions:
-            if index > exported_pipeline_position:     
-                correct_bracket_position = index
-                break
-        model_name = custom_best_pipeline[exported_pipeline_position:correct_bracket_position]
+        # bracket_positions = [match.start() for match in re.finditer("\(", custom_best_pipeline)]
+        # exported_pipeline_position = re.search("exported_pipeline = ", custom_best_pipeline).end()
+        # for index in bracket_positions:
+        #     if index > exported_pipeline_position:     
+        #         correct_bracket_position = index
+        #         break
+        # model_name = custom_best_pipeline[exported_pipeline_position:correct_bracket_position]
 
         # confusion matrix
         cm = confusion_matrix(y_test, y_pred)
@@ -1212,47 +1116,73 @@ def tpot_classification(train_df: pd.DataFrame, test_df: pd.DataFrame, identifie
         # # Precision-Recall curve
         # precision_, recall_, _ = precision_recall_curve(y_test, y_prob)     
         
-        # classification metrics
-        recall = recall_score(y_test, y_pred)
-        precision = precision_score(y_test, y_pred)
-        accuracy = accuracy_score(y_test, y_pred)
-        f1 = f1_score(y_test, y_pred)
+        if target_type == "binary":
 
-        # print(f"\nPerformance of best performing model ({model_name}) on the test set:")
-        # bpm_results = pd.DataFrame({"Model": [model_name], "Accuracy": [accuracy], "Recall": [recall], "Precision": [precision], "F1 score": [f1], "ROC AUC": [roc_auc_score(y_test, y_prob)]})
-        # print(tabulate(round(bpm_results, 3), headers='keys', tablefmt='psql'))
+            # classification metrics
+            recall = recall_score(y_test, y_pred)
+            precision = precision_score(y_test, y_pred)
+            accuracy = accuracy_score(y_test, y_pred)
+            f1 = f1_score(y_test, y_pred)
 
-        # results = {"accuracy":[accuracy],"recall":[recall], "precision":[precision], "f1":[f1] "AUC":[roc_auc_score(y_test, y_prob)]}
-  
-        # Visualizing Confusion Matrix
-        group_names = ["True Negative","False Positive","False Negative","True Positive"]
-        group_counts = ["{0:0.0f}".format(value) for value in cm.flatten()]
-        group_percentages = ["{0:.2%}".format(value) for value in cm.flatten()/np.sum(cm)]
-        labels = [f"{v1}\n{v2}\n{v3}" for v1, v2, v3 in zip(group_names, group_counts, group_percentages)]
-        labels = np.asarray(labels).reshape(2,2)
-        sns.heatmap(cm_df, annot=labels, fmt="", cmap="YlGnBu", cbar=False)
-        plt.title(label = "Confusion Matrix")
-        plt.show()
+            print(f"\nTest set performance of best performing model on the train set:")
+            bpm_results = pd.DataFrame({"Accuracy": [accuracy], "Recall": [recall], "Precision": [precision], "F1 score": [f1]})
+            print(tabulate(round(bpm_results, 3), headers='keys', tablefmt='psql'))
 
-        # # Visualizing ROC Curve
-        # sns.set_theme(style = 'white')
-        # # plt.figure(figsize = (8, 8))
-        # plt.plot(false_positive_rate, true_positive_rate, color = '#b01717', label = 'AUC = %0.3f' % roc_auc)
-        # plt.legend(loc = 'lower right')
-        # plt.plot([0, 1], [0, 1], linestyle = '--', color = '#174ab0')
-        # plt.axis('tight')
-        # plt.title(label = "ROC curve")
-        # plt.ylabel('True Positive Rate')
-        # plt.xlabel('False Positive Rate')
-        # plt.show()
+            # results = {"accuracy":[accuracy],"recall":[recall], "precision":[precision], "f1":[f1] "AUC":[roc_auc_score(y_test, y_prob)]}
+    
+            # Visualizing Confusion Matrix
+            group_names = ["True Negative","False Positive","False Negative","True Positive"]
+            group_counts = ["{0:0.0f}".format(value) for value in cm.flatten()]
+            group_percentages = ["{0:.2%}".format(value) for value in cm.flatten()/np.sum(cm)]
+            labels = [f"{v1}\n{v2}\n{v3}" for v1, v2, v3 in zip(group_names, group_counts, group_percentages)]
+            labels = np.asarray(labels).reshape(2,2)
+            sns.heatmap(cm_df, annot=labels, fmt="", cmap="YlGnBu", cbar=False)
+            plt.title(label = "Confusion Matrix")
+            plt.show()
 
-        # # Visualizing Precision-Recall Curve
-        # plt.plot(recall_, precision_, color = '#b01717')
-        # plt.axis('tight')
-        # plt.title(label = "Precision-Recall curve")
-        # plt.ylabel('Precision')
-        # plt.xlabel('Recall')
-        # plt.show()
+            # # Visualizing ROC Curve
+            # sns.set_theme(style = 'white')
+            # # plt.figure(figsize = (8, 8))
+            # plt.plot(false_positive_rate, true_positive_rate, color = '#b01717', label = 'AUC = %0.3f' % roc_auc)
+            # plt.legend(loc = 'lower right')
+            # plt.plot([0, 1], [0, 1], linestyle = '--', color = '#174ab0')
+            # plt.axis('tight')
+            # plt.title(label = "ROC curve")
+            # plt.ylabel('True Positive Rate')
+            # plt.xlabel('False Positive Rate')
+            # plt.show()
+
+            # # Visualizing Precision-Recall Curve
+            # plt.plot(recall_, precision_, color = '#b01717')
+            # plt.axis('tight')
+            # plt.title(label = "Precision-Recall curve")
+            # plt.ylabel('Precision')
+            # plt.xlabel('Recall')
+            # plt.show()
+        
+        elif target_type == "multiclass":
+            
+            # classification metrics
+            recall = recall_score(y_test, y_pred, average="weighted")
+            precision = precision_score(y_test, y_pred, average="weighted")
+            accuracy = accuracy_score(y_test, y_pred)
+            f1 = f1_score(y_test, y_pred, average="weighted")
+            kappa = cohen_kappa_score(y_test, y_pred)
+
+            print(f"\nTest set performance of best performing model on the train set:")
+            bpm_results = pd.DataFrame({"Accuracy": [accuracy], "Recall": [recall], "Precision": [precision], "F1 score": [f1], "Cohen's kappa": [kappa]})
+            print(tabulate(round(bpm_results, 3), headers='keys', tablefmt='psql'))
+
+            # results = {"accuracy":[accuracy],"recall":[recall], "precision":[precision], "f1":[f1] "AUC":[roc_auc_score(y_test, y_prob)]}
+
+            # Visualizing Confusion Matrix
+            group_counts = ["{0:0.0f}".format(value) for value in cm.flatten()]
+            group_percentages = ["{0:.2%}".format(value) for value in cm.flatten()/np.sum(cm)]
+            labels = [f"{v1}\n{v2}" for v1, v2 in zip(group_counts, group_percentages)]
+            labels = np.asarray(labels).reshape(len(train_df[target].unique()), len(train_df[target].unique()))
+            sns.heatmap(cm_df, annot=labels, fmt="", cmap="YlGnBu", cbar=False)
+            plt.title(label = "Confusion Matrix")
+            plt.show()
 
         return None
         
