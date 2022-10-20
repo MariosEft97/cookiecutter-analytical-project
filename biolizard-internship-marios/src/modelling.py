@@ -691,7 +691,8 @@ def feature_importance(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier
         features = X_train.columns
 
         if use_boruta_shap == False:
-
+            
+            # add function outside of if
             def feature_importance_plot(title, ytitle):
                 feature_importance_dict = {features[i]: importances[i] for i in range(len(features))}
                 feature_importance_sorted = sorted(feature_importance_dict.items(), key=lambda x: x[1], reverse=True)
