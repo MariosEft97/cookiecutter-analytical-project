@@ -891,7 +891,7 @@ def shap_value_analysis(train_df: pd.DataFrame, test_df: pd.DataFrame, identifie
         return None
 
 ### EVENT CHART FUNCTION ###
-def event_chart(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, classifier: ClassifierModel) -> None:
+def event_chart(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list, target: str, classifier: ClassifierModel, classification_type: str) -> None:
     
     '''
     The function plots a chart event.
@@ -902,6 +902,7 @@ def event_chart(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list,
         identifier (list): identifier features of the dataset
         target (str): target feature
         classifier (ClassifierModel): sklearn classifier model
+        classification_type (str): type of classification (binary or multiclass)
 
     Returns:
         None
@@ -926,6 +927,10 @@ def event_chart(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list,
     # elif not isinstance(classifier, ClassifierModel):
     #     error_message = "classifier must be a ClassifierModel"
     #     raise TypeError(error_message)
+
+    elif not isinstance(classification_type, str):
+        error_message = "classification_type must be specified as a string\noptions: binary or multiclass"
+        raise TypeError(error_message)
     
     else:
         
@@ -954,36 +959,121 @@ def event_chart(train_df: pd.DataFrame, test_df: pd.DataFrame, identifier: list,
         # print(len(y_pred))
         # print(len(y_test))
         # print(len(test_df[identifier[0]]))
-
-        df = pd.DataFrame({"Sample": test_df[identifier[0]], "Model Score": y_prob, "Model Prediction": y_pred, "True Class": list(test_df[target])})
-        df.sort_values(by="Model Score", ascending=True, inplace=True, ignore_index=True)
-
-        # display(df)
-
-        # # Create traces
-        # fig = go.Figure()
         
-        # fig.add_trace(go.Scatter(x=[i for i in range(len(df["Sample"]))], y=round(df["Model Score"], 3), mode='lines+markers', name='Model Score'))
+        if classification_type == "binary":
+            df = pd.DataFrame({"Sample": test_df[identifier[0]], "Model Score": y_prob, "Model Prediction": y_pred, "True Class": list(encoded_test_target)})
+            df.sort_values(by="Model Score", ascending=True, inplace=True, ignore_index=True)
+            df['true_class_color'] = ["red" if true_class == 0 else "green" for true_class in df["True Class"]]
+            df['true_class_opacity'] = [0.25 if true_class == 0 else 1 for true_class in df["True Class"]]
+            df['predicted_class_opacity'] = [0.25 if predicted_class == 0 else 1 for predicted_class in df["Model Prediction"]]
+            # display(df.head(10))
 
-        fig = px.scatter(df, x=[i for i in range(len(df["Sample"]))], y=round(df["Model Score"], 3), color="True Class")
+            # Create traces
+            fig = go.Figure()
+            
+            fig.add_trace(go.Scatter(
+                x=[i for i in range(len(df["Sample"]))],
+                y=round(df["Model Score"], 3),
+                mode='lines+markers',
+                marker=dict(line=dict(width=0.5)),
+                line=dict(width=0.5),
+                name='Model Score'))
+            
+            fig.add_trace(go.Scatter(
+                x=[i for i in range(len(df["Sample"]))],
+                y=[i+0.5 for i in round(df["Model Score"], 3)],
+                mode='lines+markers',
+                marker=dict(color="darkcyan", opacity=df["true_class_opacity"], line=dict(width=0.5, color="darkcyan")),
+                line=dict(width=0.5),
+                name=f'True Classes'))
+            
+            fig.add_trace(go.Scatter(
+                x=[i for i in range(len(df["Sample"]))],
+                y=[i+1 for i in round(df["Model Score"], 3)],
+                mode='lines+markers',
+                marker=dict(color="darkblue", opacity=df["predicted_class_opacity"], line=dict(width=0.5, color="darkblue")),
+                line=dict(width=0.5),
+                name='Predicted Classes'))
 
-        fig.update_layout(
-            
-            title=f'Event Chart (Model: {model_name})',
-            
-            xaxis = dict(
-                title="Samples",
-                tickmode = 'array',
-                tickvals = [i for i in range(len(df["Sample"]))],
-                ticktext = [str(i) for i in list(df["Sample"])]
-            ),
-            
-            yaxis = dict(
-                title="Model Score"
+            # fig = px.scatter(df, x=[i for i in range(len(df["Sample"]))], y=round(df["Model Score"], 3), color="True Class")
+
+            fig.update_layout(
+                
+                title=f'Event Chart (Model: {model_name})',
+                
+                xaxis = dict(
+                    title="Samples",
+                    tickmode = 'array',
+                    tickvals = [i for i in range(len(df["Sample"]))],
+                    ticktext = [str(i) for i in list(df["Sample"])]
+                ),
+                
+                yaxis = dict(
+                    title="Model Score"
+                )
             )
-        )
-        
-        fig.show()
+            
+            fig.show()
+
+        elif classification_type == "multiclass":
+            df = pd.DataFrame({"Sample": test_df[identifier[0]], "Model Score": y_prob, "Model Prediction": y_pred, "True Class": list(test_df[target])})
+            df.sort_values(by="Model Score", ascending=True, inplace=True, ignore_index=True)
+
+            fig = px.scatter(df, x=[i for i in range(len(df["Sample"]))], y=round(df["Model Score"], 3), color="True Class")
+
+            fig.update_layout(
+                
+                title=f'Event Chart (Model: {model_name})',
+                
+                xaxis = dict(
+                    title="Samples",
+                    tickmode = 'array',
+                    tickvals = [i for i in range(len(df["Sample"]))],
+                    ticktext = [str(i) for i in list(df["Sample"])]
+                ),
+                
+                yaxis = dict(
+                    title="Model Score"
+                )
+            )
+            
+            fig.show()
+
+        # aliceblue, antiquewhite, aqua, aquamarine, azure,
+        #     beige, bisque, black, blanchedalmond, blue,
+        #     blueviolet, brown, burlywood, cadetblue,
+        #     chartreuse, chocolate, coral, cornflowerblue,
+        #     cornsilk, crimson, cyan, darkblue, darkcyan,
+        #     darkgoldenrod, darkgray, darkgrey, darkgreen,
+        #     darkkhaki, darkmagenta, darkolivegreen, darkorange,
+        #     darkorchid, darkred, darksalmon, darkseagreen,
+        #     darkslateblue, darkslategray, darkslategrey,
+        #     darkturquoise, darkviolet, deeppink, deepskyblue,
+        #     dimgray, dimgrey, dodgerblue, firebrick,
+        #     floralwhite, forestgreen, fuchsia, gainsboro,
+        #     ghostwhite, gold, goldenrod, gray, grey, green,
+        #     greenyellow, honeydew, hotpink, indianred, indigo,
+        #     ivory, khaki, lavender, lavenderblush, lawngreen,
+        #     lemonchiffon, lightblue, lightcoral, lightcyan,
+        #     lightgoldenrodyellow, lightgray, lightgrey,
+        #     lightgreen, lightpink, lightsalmon, lightseagreen,
+        #     lightskyblue, lightslategray, lightslategrey,
+        #     lightsteelblue, lightyellow, lime, limegreen,
+        #     linen, magenta, maroon, mediumaquamarine,
+        #     mediumblue, mediumorchid, mediumpurple,
+        #     mediumseagreen, mediumslateblue, mediumspringgreen,
+        #     mediumturquoise, mediumvioletred, midnightblue,
+        #     mintcream, mistyrose, moccasin, navajowhite, navy,
+        #     oldlace, olive, olivedrab, orange, orangered,
+        #     orchid, palegoldenrod, palegreen, paleturquoise,
+        #     palevioletred, papayawhip, peachpuff, peru, pink,
+        #     plum, powderblue, purple, red, rosybrown,
+        #     royalblue, rebeccapurple, saddlebrown, salmon,
+        #     sandybrown, seagreen, seashell, sienna, silver,
+        #     skyblue, slateblue, slategray, slategrey, snow,
+        #     springgreen, steelblue, tan, teal, thistle, tomato,
+        #     turquoise, violet, wheat, white, whitesmoke,
+        #     yellow, yellowgreen
 
         return None
 
